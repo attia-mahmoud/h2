@@ -218,9 +218,9 @@ def validate_headers(headers, hdr_validation_flags):
     headers = _reject_te(
         headers, hdr_validation_flags
     )
-    headers = _reject_connection_header(
-        headers, hdr_validation_flags
-    )
+    # headers = _reject_connection_header(
+    #     headers, hdr_validation_flags
+    # )
     headers = _reject_pseudo_header_fields(
         headers, hdr_validation_flags
     )
@@ -639,7 +639,7 @@ def normalize_outbound_headers(headers, hdr_validation_flags, should_split_outbo
     if should_split_outbound_cookies:
         headers = _split_outbound_cookie_fields(headers, hdr_validation_flags)
     headers = _strip_surrounding_whitespace(headers, hdr_validation_flags)
-    headers = _strip_connection_headers(headers, hdr_validation_flags)
+    # headers = _strip_connection_headers(headers, hdr_validation_flags)
     headers = _secure_headers(headers, hdr_validation_flags)
 
     return headers
@@ -666,9 +666,9 @@ def validate_outbound_headers(headers, hdr_validation_flags):
     headers = _reject_te(
         headers, hdr_validation_flags
     )
-    headers = _reject_connection_header(
-        headers, hdr_validation_flags
-    )
+    # headers = _reject_connection_header(
+    #     headers, hdr_validation_flags
+    # )
     headers = _reject_pseudo_header_fields(
         headers, hdr_validation_flags
     )

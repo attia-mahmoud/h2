@@ -209,15 +209,15 @@ def validate_headers(headers, hdr_validation_flags):
     headers = _reject_empty_header_names(
         headers, hdr_validation_flags
     )
-    headers = _reject_uppercase_header_fields(
-        headers, hdr_validation_flags
-    )
+    # headers = _reject_uppercase_header_fields(
+    #     headers, hdr_validation_flags
+    # )
     headers = _reject_surrounding_whitespace(
         headers, hdr_validation_flags
     )
-    headers = _reject_te(
-        headers, hdr_validation_flags
-    )
+    # headers = _reject_te(
+    #     headers, hdr_validation_flags
+    # )
     # headers = _reject_connection_header(
     #     headers, hdr_validation_flags
     # )
@@ -635,7 +635,7 @@ def normalize_outbound_headers(headers, hdr_validation_flags, should_split_outbo
     :param hdr_validation_flags: An instance of HeaderValidationFlags.
     :param should_split_outbound_cookies: boolean flag
     """
-    headers = _lowercase_header_names(headers, hdr_validation_flags)
+    # headers = _lowercase_header_names(headers, hdr_validation_flags)
     if should_split_outbound_cookies:
         headers = _split_outbound_cookie_fields(headers, hdr_validation_flags)
     headers = _strip_surrounding_whitespace(headers, hdr_validation_flags)
@@ -663,9 +663,9 @@ def validate_outbound_headers(headers, hdr_validation_flags):
     :param headers: The HTTP header set.
     :param hdr_validation_flags: An instance of HeaderValidationFlags.
     """
-    headers = _reject_te(
-        headers, hdr_validation_flags
-    )
+    # headers = _reject_te(
+    #     headers, hdr_validation_flags
+    # )
     # headers = _reject_connection_header(
     #     headers, hdr_validation_flags
     # )

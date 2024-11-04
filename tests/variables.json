@@ -1,0 +1,112 @@
+{
+    "test_cases": [
+        {
+            "id": 147,
+            "category": "Section 8.2.2 (Connection-Specific Header Fields)",
+            "description": "Send connection-specific header field in a request that should trigger PROTOCOL_ERROR",
+            "headers": [
+                [":method", "GET"],
+                [":scheme", "http"],
+                [":path", "/"],
+                [":authority", "localhost"],
+                ["connection", "keep-alive"]
+            ]
+        },
+        {
+            "id": 140,
+            "category": "Section 8.2 (HTTP Fields)",
+            "description": "Field names MUST be converted to lowercase when constructing an HTTP/2 message.",
+            "headers": [
+                [":method", "GET"],
+                [":scheme", "http"],
+                [":path", "/"],
+                [":authority", "localhost"],
+                ["user-agent", "python-h2"]
+            ]
+        },
+        {
+            "id": 148,
+            "category": "Section 8.2.2 (Connection-Specific Header Fields)",
+            "description": "Send header with invalid characters (0x00-0x20, 0x41-0x5a, or 0x7f-0xff)",
+            "headers": [
+                [":method", "GET"],
+                [":scheme", "http"],
+                [":authority", "localhost"],
+                [":path", "/"],
+                ["te", "chunked"]
+            ]
+        },
+        {
+            "id": 157,
+            "category": "Section 8.3 (HTTP Control Data)",
+            "description": "pseudo-header fields MUST appear in a field block before all regular field lines",
+            "headers": [
+                [":method", "GET"],
+                [":scheme", "http"],
+                ["user-agent", "test"],
+                [":authority", "localhost"],
+                [":path", "/"]
+            ]
+        },
+        {
+            "id": 152,
+            "category": "Section 8.3 (HTTP Control Data)",
+            "description": "Endpoints MUST NOT generate pseudo-header fields other than those defined in this document.",
+            "headers": [
+                [":method", "GET"],
+                [":scheme", "http"],
+                [":authority", "localhost"],
+                [":path", "/"],
+                [":user-agent", "test"]
+            ]
+        },
+        {
+            "id": 154,
+            "category": "Section 8.3 (HTTP Control Data)",
+            "description": "Pseudo-header fields defined for responses MUST NOT appear in requests.",
+            "headers": [
+                [":method", "GET"],
+                [":scheme", "http"],
+                [":authority", "localhost"],
+                [":path", "/"],
+                [":status", "200"]
+            ]
+        },
+        {
+            "id": 158,
+            "category": "Section 8.3 (HTTP Control Data)",
+            "description": "The same pseudo-header field name MUST NOT appear more than once.",
+            "headers": [
+                [":method", "GET"],
+                [":scheme", "http"],
+                [":authority", "localhost"],
+                [":authority", "localhost"],
+                [":path", "/"]
+            ]
+        },
+        {
+            "id": 141,
+            "category": "Section 8.2.1 (Field Validity)",
+            "description": "A field name MUST NOT contain characters in the ranges 0x00-0x20, 0x41-0x5a, or 0x7f-0xff (all ranges inclusive). This specifically excludes all non-visible ASCII characters, ASCII SP (0x20), and uppercase characters ('A' to 'Z', ASCII 0x41 to 0x5a).",
+            "headers": [
+                [":method", "GET"],
+                [":scheme", "http"],
+                [":authority", "localhost"],
+                [":path", "/"],
+                ["user\u0000agent", "test"]
+            ]
+        },
+        {
+            "id": 142,
+            "category": "Section 8.2.1 (Field Validity)",
+            "description": "A field name MUST NOT include a colon (ASCII COLON, 0x3a).",
+            "headers": [
+                [":method", "GET"],
+                [":scheme", "http"],
+                [":authority", "localhost"],
+                [":path", "/"],
+                [":user-agent:", "test"]
+            ]
+        }
+    ]
+}

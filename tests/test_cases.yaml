@@ -1,0 +1,108 @@
+metadata:
+  version: "1.0"
+  spec_reference: "RFC 9113"
+
+test_suites:
+  - name: "Connection-Specific Header Fields"
+    section: "8.2.2"
+    cases:
+      - id: 147
+        description: "Send connection-specific header field in a request that should trigger PROTOCOL_ERROR"
+        expected_error: "PROTOCOL_ERROR"
+        headers:
+          pseudo_headers:
+            method: "GET"
+            scheme: "http"
+            path: "/"
+            authority: "localhost"
+          regular_headers:
+            connection: "keep-alive"
+
+  - name: "HTTP Fields"
+    section: "8.2"
+    cases:
+      - id: 140
+        description: "Field names MUST be converted to lowercase when constructing an HTTP/2 message"
+        expected_error: "PROTOCOL_ERROR"
+        headers:
+          pseudo_headers:
+            method: "GET"
+            scheme: "http"
+            path: "/"
+            authority: "localhost"
+          regular_headers:
+            user-agent: "python-h2"
+
+      - id: 141
+        description: "A field name MUST NOT contain characters in the ranges 0x00-0x20, 0x41-0x5a, or 0x7f-0xff"
+        expected_error: "PROTOCOL_ERROR"
+        headers:
+          pseudo_headers:
+            method: "GET"
+            scheme: "http"
+            path: "/"
+            authority: "localhost"
+          regular_headers:
+            "user\u0000agent": "test"
+
+      - id: 142
+        description: "A field name MUST NOT include a colon (ASCII COLON, 0x3a)"
+        expected_error: "PROTOCOL_ERROR"
+        headers:
+          pseudo_headers:
+            method: "GET"
+            scheme: "http"
+            path: "/"
+            authority: "localhost"
+          regular_headers:
+            ":user-agent:": "test"
+
+  - name: "HTTP Control Data"
+    section: "8.3"
+    cases:
+      - id: 157
+        description: "pseudo-header fields MUST appear in a field block before all regular field lines"
+        expected_error: "PROTOCOL_ERROR"
+        headers:
+          pseudo_headers:
+            method: "GET"
+            scheme: "http"
+            authority: "localhost"
+            path: "/"
+          regular_headers:
+            user-agent: "test"
+
+      - id: 152
+        description: "Endpoints MUST NOT generate pseudo-header fields other than those defined in this document"
+        expected_error: "PROTOCOL_ERROR"
+        headers:
+          pseudo_headers:
+            method: "GET"
+            scheme: "http"
+            authority: "localhost"
+            path: "/"
+          regular_headers:
+            ":user-agent": "test"
+
+      - id: 154
+        description: "Pseudo-header fields defined for responses MUST NOT appear in requests"
+        expected_error: "PROTOCOL_ERROR"
+        headers:
+          pseudo_headers:
+            method: "GET"
+            scheme: "http"
+            authority: "localhost"
+            path: "/"
+            status: "200"
+
+      - id: 158
+        description: "The same pseudo-header field name MUST NOT appear more than once"
+        expected_error: "PROTOCOL_ERROR"
+        headers:
+          pseudo_headers:
+            method: "GET"
+            scheme: "http"
+            authority: "localhost"
+            path: "/"
+          duplicate_pseudo_headers:
+            authority: "localhost" 

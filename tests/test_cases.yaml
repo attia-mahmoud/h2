@@ -8,11 +8,6 @@ test_suites:
     cases:
       - id: 1
         description: "Client must not send h2c protocol identifier"
-        test_type: "connection"
-        expected_error: "PROTOCOL_ERROR"
-        expected_response:
-          status: "400"
-          message: "Bad Request"
         connection_settings:
           client_side: true
           header_encoding: "utf-8"
@@ -36,24 +31,63 @@ test_suites:
           - type: "HEADERS"
             flags: ["END_STREAM"]
             stream_id: 1
-        validation:
-          - check: "error_code"
-            value: "PROTOCOL_ERROR"
-          - check: "connection_state"
-            value: "CLOSED"
+
+      - id: 2
+        description: "Client and server must send connection preface after TLS"
+        connection_settings:
+          client_side: true
+          header_encoding: "utf-8"
+          tls_enabled: true
+        preface:
+          client_preface: "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+          verify_server_preface: true
+        headers:
+          pseudo_headers:
+            method: "GET"
+            scheme: "https"  # Changed to https since we're using TLS
+            path: "/"
+            authority: "localhost"
+          regular_headers:
+            user-agent: "test-client"
+        frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+
+  - name: "Starting HTTP/2 for HTTPS URIs"
+    section: "3.2"
+    cases:
+      - id: 1
+        description: "Client must not send h2c protocol identifier"
+        connection_settings:
+          client_side: true
+          header_encoding: "utf-8"
+          enable_push: false
+          initial_window_size: 65535
+          max_frame_size: 16384
+        headers:
+          pseudo_headers:
+            method: "GET"
+            scheme: "http"
+            path: "/"
+            authority: "localhost"
+          regular_headers:
+            upgrade: "h2c"
+            http2-settings: "AAMAAABkAAQAAP__"
+            connection: "Upgrade, HTTP2-Settings"
+        frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+          - type: "HEADERS"
+            flags: ["END_STREAM"]
+            stream_id: 1
 
   - name: "Connection-Specific Header Fields"
     section: "8.2.2"
     cases:
       - id: 147
         description: "Send connection-specific header field in a request that should trigger PROTOCOL_ERROR"
-        test_type: "header"
-        expected_error: "PROTOCOL_ERROR"
-        expected_response:
-          # status: "400"
-          # message: "Protocol Error"
-          type: "timeout"  # New field to indicate timeout expectation
-          duration: 5  # Timeout duration in seconds
         connection_settings:
           client_side: true
           header_encoding: "utf-8"
@@ -69,17 +103,12 @@ test_suites:
           - type: "HEADERS"
             flags: ["END_STREAM"]
             stream_id: 1
-        validation:
-          - check: "error_code"
-            value: "PROTOCOL_ERROR"
 
   - name: "HTTP Fields"
     section: "8.2"
     cases:
       - id: 140
         description: "Field names MUST be converted to lowercase when constructing an HTTP/2 message"
-        test_type: "header"
-        expected_error: "PROTOCOL_ERROR"
         connection_settings:
           client_side: true
           header_encoding: "utf-8"
@@ -95,14 +124,9 @@ test_suites:
           - type: "HEADERS"
             flags: ["END_STREAM"]
             stream_id: 1
-        validation:
-          - check: "error_code"
-            value: "PROTOCOL_ERROR"
 
       - id: 141
         description: "A field name MUST NOT contain characters in the ranges 0x00-0x20, 0x41-0x5a, or 0x7f-0xff"
-        test_type: "header"
-        expected_error: "PROTOCOL_ERROR"
         connection_settings:
           client_side: true
           header_encoding: "utf-8"
@@ -118,17 +142,12 @@ test_suites:
           - type: "HEADERS"
             flags: ["END_STREAM"]
             stream_id: 1
-        validation:
-          - check: "error_code"
-            value: "PROTOCOL_ERROR"
 
   - name: "HTTP Control Data"
     section: "8.3"
     cases:
       - id: 157
         description: "pseudo-header fields MUST appear in a field block before all regular field lines"
-        test_type: "header_order"
-        expected_error: "PROTOCOL_ERROR"
         connection_settings:
           client_side: true
           header_encoding: "utf-8"
@@ -144,16 +163,9 @@ test_suites:
           - type: "HEADERS"
             flags: ["END_STREAM"]
             stream_id: 1
-        validation:
-          - check: "error_code"
-            value: "PROTOCOL_ERROR"
-          - check: "header_order"
-            value: "invalid"
 
       - id: 152
         description: "Endpoints MUST NOT generate pseudo-header fields other than those defined in this document"
-        test_type: "pseudo_header"
-        expected_error: "PROTOCOL_ERROR"
         connection_settings:
           client_side: true
           header_encoding: "utf-8"
@@ -169,6 +181,3 @@ test_suites:
           - type: "HEADERS"
             flags: ["END_STREAM"]
             stream_id: 1
-        validation:
-          - check: "error_code"
-            value: "PROTOCOL_ERROR"

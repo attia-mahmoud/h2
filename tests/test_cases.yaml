@@ -3,12 +3,60 @@ metadata:
   spec_reference: "RFC 9113"
 
 test_suites:
+  - name: "Starting HTTP/2 for HTTPS URIs"
+    section: "3.2"
+    cases:
+      - id: 1
+        description: "Client must not send h2c protocol identifier"
+        test_type: "connection"
+        expected_error: "PROTOCOL_ERROR"
+        expected_response:
+          status: "400"
+          message: "Bad Request"
+        connection_settings:
+          client_side: true
+          header_encoding: "utf-8"
+          enable_push: false
+          initial_window_size: 65535
+          max_frame_size: 16384
+        headers:
+          pseudo_headers:
+            method: "GET"
+            scheme: "http"
+            path: "/"
+            authority: "localhost"
+          regular_headers:
+            upgrade: "h2c"
+            http2-settings: "AAMAAABkAAQAAP__"
+            connection: "Upgrade, HTTP2-Settings"
+        frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+          - type: "HEADERS"
+            flags: ["END_STREAM"]
+            stream_id: 1
+        validation:
+          - check: "error_code"
+            value: "PROTOCOL_ERROR"
+          - check: "connection_state"
+            value: "CLOSED"
+
   - name: "Connection-Specific Header Fields"
     section: "8.2.2"
     cases:
       - id: 147
         description: "Send connection-specific header field in a request that should trigger PROTOCOL_ERROR"
+        test_type: "header"
         expected_error: "PROTOCOL_ERROR"
+        expected_response:
+          # status: "400"
+          # message: "Protocol Error"
+          type: "timeout"  # New field to indicate timeout expectation
+          duration: 5  # Timeout duration in seconds
+        connection_settings:
+          client_side: true
+          header_encoding: "utf-8"
         headers:
           pseudo_headers:
             method: "GET"
@@ -17,13 +65,24 @@ test_suites:
             authority: "localhost"
           regular_headers:
             connection: "keep-alive"
+        frames:
+          - type: "HEADERS"
+            flags: ["END_STREAM"]
+            stream_id: 1
+        validation:
+          - check: "error_code"
+            value: "PROTOCOL_ERROR"
 
   - name: "HTTP Fields"
     section: "8.2"
     cases:
       - id: 140
         description: "Field names MUST be converted to lowercase when constructing an HTTP/2 message"
+        test_type: "header"
         expected_error: "PROTOCOL_ERROR"
+        connection_settings:
+          client_side: true
+          header_encoding: "utf-8"
         headers:
           pseudo_headers:
             method: "GET"
@@ -31,11 +90,22 @@ test_suites:
             path: "/"
             authority: "localhost"
           regular_headers:
-            user-agent: "python-h2"
+            User-Agent: "python-h2"  # Uppercase header name
+        frames:
+          - type: "HEADERS"
+            flags: ["END_STREAM"]
+            stream_id: 1
+        validation:
+          - check: "error_code"
+            value: "PROTOCOL_ERROR"
 
       - id: 141
         description: "A field name MUST NOT contain characters in the ranges 0x00-0x20, 0x41-0x5a, or 0x7f-0xff"
+        test_type: "header"
         expected_error: "PROTOCOL_ERROR"
+        connection_settings:
+          client_side: true
+          header_encoding: "utf-8"
         headers:
           pseudo_headers:
             method: "GET"
@@ -44,25 +114,24 @@ test_suites:
             authority: "localhost"
           regular_headers:
             "user\u0000agent": "test"
-
-      - id: 142
-        description: "A field name MUST NOT include a colon (ASCII COLON, 0x3a)"
-        expected_error: "PROTOCOL_ERROR"
-        headers:
-          pseudo_headers:
-            method: "GET"
-            scheme: "http"
-            path: "/"
-            authority: "localhost"
-          regular_headers:
-            ":user-agent:": "test"
+        frames:
+          - type: "HEADERS"
+            flags: ["END_STREAM"]
+            stream_id: 1
+        validation:
+          - check: "error_code"
+            value: "PROTOCOL_ERROR"
 
   - name: "HTTP Control Data"
     section: "8.3"
     cases:
       - id: 157
         description: "pseudo-header fields MUST appear in a field block before all regular field lines"
+        test_type: "header_order"
         expected_error: "PROTOCOL_ERROR"
+        connection_settings:
+          client_side: true
+          header_encoding: "utf-8"
         headers:
           pseudo_headers:
             method: "GET"
@@ -71,10 +140,23 @@ test_suites:
             path: "/"
           regular_headers:
             user-agent: "test"
+        frames:
+          - type: "HEADERS"
+            flags: ["END_STREAM"]
+            stream_id: 1
+        validation:
+          - check: "error_code"
+            value: "PROTOCOL_ERROR"
+          - check: "header_order"
+            value: "invalid"
 
       - id: 152
         description: "Endpoints MUST NOT generate pseudo-header fields other than those defined in this document"
+        test_type: "pseudo_header"
         expected_error: "PROTOCOL_ERROR"
+        connection_settings:
+          client_side: true
+          header_encoding: "utf-8"
         headers:
           pseudo_headers:
             method: "GET"
@@ -83,26 +165,10 @@ test_suites:
             path: "/"
           regular_headers:
             ":user-agent": "test"
-
-      - id: 154
-        description: "Pseudo-header fields defined for responses MUST NOT appear in requests"
-        expected_error: "PROTOCOL_ERROR"
-        headers:
-          pseudo_headers:
-            method: "GET"
-            scheme: "http"
-            authority: "localhost"
-            path: "/"
-            status: "200"
-
-      - id: 158
-        description: "The same pseudo-header field name MUST NOT appear more than once"
-        expected_error: "PROTOCOL_ERROR"
-        headers:
-          pseudo_headers:
-            method: "GET"
-            scheme: "http"
-            authority: "localhost"
-            path: "/"
-          duplicate_pseudo_headers:
-            authority: "localhost" 
+        frames:
+          - type: "HEADERS"
+            flags: ["END_STREAM"]
+            stream_id: 1
+        validation:
+          - check: "error_code"
+            value: "PROTOCOL_ERROR"

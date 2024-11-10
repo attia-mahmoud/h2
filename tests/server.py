@@ -2,6 +2,7 @@ import h2.connection
 import h2.config
 import h2.events
 import socket
+import select
 from typing import List, Tuple
 
 class HTTP2Server:
@@ -22,6 +23,7 @@ class HTTP2Server:
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind((self.host, self.port))
         self.sock.listen(5)
+        self.sock.settimeout(10)  # Default timeout
 
     def _handle_request(self, event: h2.events.RequestReceived, 
                        conn: h2.connection.H2Connection,
@@ -56,6 +58,12 @@ class HTTP2Server:
         
         try:
             while True:
+                # Use select to implement timeout
+                readable, _, _ = select.select([client_socket], [], [], 5)
+                if not readable:
+                    print("Connection timed out - no data received")
+                    return
+
                 data = client_socket.recv(65535)
                 if not data:
                     break

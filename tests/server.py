@@ -5,17 +5,40 @@ import socket
 import select
 import yaml
 import ssl
+import logging
+from dataclasses import dataclass
+from enum import Enum
 from typing import List, Tuple, Dict, Optional, Any
 import sys
 
-class HTTP2Server:
-    def __init__(self, host: str = 'localhost', port: int = 7700, yaml_path: str = 'test_cases.yaml'):
-        self.host = host
-        self.port = port
-        self.sock = None
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+
+class FrameType(Enum):
+    HEADERS = "HEADERS"
+    SETTINGS = "SETTINGS"
+    DATA = "DATA"
+    WINDOW_UPDATE = "WINDOW_UPDATE"
+
+@dataclass
+class ServerResponse:
+    status: str = "200"
+    content_type: str = "text/plain"
+    body: str = "Hello, World!"
+
+    def to_headers(self) -> List[Tuple[str, str]]:
+        return [
+            (':status', self.status),
+            ('content-type', self.content_type),
+            ('content-length', str(len(self.body)))
+        ]
+
+class TestCaseManager:
+    def __init__(self, yaml_path: str):
         self.yaml_path = yaml_path
         self.test_data = self._load_yaml()
-        
+        self.logger = logging.getLogger(__name__)
+
     def _load_yaml(self) -> Dict:
         """Load and parse YAML test configuration"""
         try:
@@ -26,151 +49,204 @@ class HTTP2Server:
         except yaml.YAMLError:
             raise ValueError(f"Invalid YAML in {self.yaml_path}")
 
-    def _find_test_case(self, test_id: int) -> Tuple[Optional[Dict], Optional[Dict]]:
+    def find_test_case(self, test_id: int) -> Tuple[Optional[Dict], Optional[Dict]]:
         """Find test case and its parent suite by ID"""
         for suite in self.test_data['test_suites']:
             for case in suite['cases']:
                 if case['id'] == test_id:
                     return case, suite
         return None, None
+
+class HTTP2Connection:
+    def __init__(self, client_socket: socket.socket, addr: Tuple[str, int], test_case: Dict[str, Any]):
+        self.client_socket = client_socket
+        self.addr = addr
+        self.test_case = test_case
+        self.conn = None
+        self.logger = logging.getLogger(__name__)
+        self.frame_sequence = []
+
+    def handle(self) -> None:
+        """Handle client connection"""
+        self.logger.info(f"Connection from {self.addr}")
         
-    def _create_response_headers(self, stream_id: int) -> List[Tuple[str, str]]:
-        return [
-            (':status', '200'),
-            ('content-type', 'text/plain'),
-            ('content-length', str(len('Hello, World!')))
-        ]
+        try:
+            self._initialize_connection()
+            self._handle_client_preface()
+            self._send_server_frames()
+            self._process_requests()
+        except Exception as e:
+            self.logger.error(f"Error handling client: {e}", exc_info=True)
+        finally:
+            self.close()
 
-    def _setup_socket(self, test_id: int) -> None:
-        test_case, suite = self._find_test_case(test_id)
-        if not test_case:
-            raise ValueError(f"Test {test_id} not found")
+    def _initialize_connection(self) -> None:
+        """Initialize H2 connection"""
+        config = h2.config.H2Configuration(client_side=False)
+        self.conn = h2.connection.H2Connection(config=config)
 
-        print(f"\nRunning test suite: {suite['name']}")
-        print(f"Section: {suite['section']}")
-        print(f"Description: {test_case['description']}")
+    def _handle_client_preface(self) -> None:
+        """Handle client preface"""
+        self.logger.info("Waiting for client preface...")
+        preface = self.client_socket.recv(24)
+        if preface != b'PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n':
+            raise ValueError(f"Invalid client preface: {preface}")
+        self.logger.info("Valid client preface received")
 
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    def _send_server_frames(self) -> None:
+        """Send frames specified in test case"""
+        for frame in self.test_case['server_frames']:
+            frame_type = FrameType(frame['type'].upper())
+            
+            if frame_type == FrameType.SETTINGS:
+                self.conn.update_settings(frame.get('settings', {}))
+            elif frame_type == FrameType.HEADERS:
+                stream_id = frame.get('stream_id', 1)
+                end_stream = 'END_STREAM' in frame.get('flags', [])
+                headers = self._format_headers(frame.get('headers', {}))
+                self.conn.send_headers(
+                    stream_id=stream_id,
+                    headers=headers,
+                    end_stream=end_stream
+                )
+            
+            self.client_socket.sendall(self.conn.data_to_send())
+            self.frame_sequence.append(frame_type)
+
+    def _format_headers(self, headers: Dict) -> List[Tuple[str, str]]:
+        """Format headers from frame configuration"""
+        formatted_headers = []
         
-        # Setup TLS if specified in test case
-        connection_settings = test_case.get('connection_settings', {})
-        if connection_settings.get('tls_enabled', False):
-            print("Setting up TLS...")
-            context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-            context.load_cert_chain(certfile="certs/server.crt", keyfile="certs/server.key")
-            self.sock = context.wrap_socket(self.sock, server_side=True)
-            print("TLS established")
+        if 'pseudo_headers' in headers:
+            for name, value in headers['pseudo_headers'].items():
+                formatted_headers.append((f":{name}", str(value)))
         
-        self.sock.bind((self.host, self.port))
-        self.sock.listen(5)
-        self.sock.settimeout(10)
+        if 'regular_headers' in headers:
+            for name, value in headers['regular_headers'].items():
+                formatted_headers.append((name, str(value)))
+        
+        return formatted_headers
 
-    def _handle_request(self, event: h2.events.RequestReceived, 
-                       conn: h2.connection.H2Connection,
-                       client_socket: socket.socket) -> None:
-        print(f"Request headers: {event.headers}")
+    def _process_requests(self) -> None:
+        """Process incoming requests"""
+        self.logger.info("Waiting for request...")
+        while True:
+            data = self.client_socket.recv(65535)
+            if not data:
+                self.logger.info("Connection closed by client")
+                break
+            
+            events = self.conn.receive_data(data)
+            self.logger.debug(f"Received events: {events}")
+            
+            for event in events:
+                if isinstance(event, h2.events.RequestReceived):
+                    self.logger.info("Request received, sending response...")
+                    self._handle_request(event)
+                    return  # Exit after handling one request
+            
+            outbound_data = self.conn.data_to_send()
+            if outbound_data:
+                self.client_socket.sendall(outbound_data)
+
+    def _handle_request(self, event: h2.events.RequestReceived) -> None:
+        """Handle incoming request"""
+        self.logger.info(f"Request headers: {event.headers}")
+        
+        response = ServerResponse()
         
         # Send response headers
-        conn.send_headers(
+        self.conn.send_headers(
             stream_id=event.stream_id,
-            headers=self._create_response_headers(event.stream_id),
+            headers=response.to_headers(),
             end_stream=False
         )
         
         # Send response data
-        response_data = 'Hello, World!'.encode('utf-8')
-        conn.send_data(
+        self.conn.send_data(
             stream_id=event.stream_id,
-            data=response_data,
+            data=response.body.encode('utf-8'),
             end_stream=True
         )
         
-        client_socket.sendall(conn.data_to_send())
+        self.client_socket.sendall(self.conn.data_to_send())
 
-    def _handle_client(self, client_socket: socket.socket, addr: Tuple[str, int]) -> None:
-        print(f"Connection from {addr}")
-        
-        try:
-            # Initialize connection
-            config = h2.config.H2Configuration(client_side=False)
-            conn = h2.connection.H2Connection(config=config)
-            
-            # Wait for client preface
-            print("Waiting for client preface...")
-            preface = client_socket.recv(24)
-            if preface != b'PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n':
-                print(f"Invalid client preface: {preface}")
-                return
-            print("Valid client preface received")
-            
-            # Send server preface (SETTINGS frame)
-            print("Sending server preface and SETTINGS...")
-            conn.initiate_connection()
-            client_socket.sendall(conn.data_to_send())
-            
-            # Receive client SETTINGS
-            print("Waiting for client SETTINGS...")
-            data = client_socket.recv(65535)
-            events = conn.receive_data(data)
-            print(f"Received client SETTINGS: {events}")
-            
-            # Send SETTINGS ACK
-            outbound_data = conn.data_to_send()
-            if outbound_data:
-                client_socket.sendall(outbound_data)
-            
-            # Now wait for the actual request
-            print("Waiting for request...")
-            while True:
-                data = client_socket.recv(65535)
-                if not data:
-                    print("Connection closed by client")
-                    break
-                
-                events = conn.receive_data(data)
-                print(f"Received events: {events}")
-                
-                for event in events:
-                    if isinstance(event, h2.events.RequestReceived):
-                        print("Request received, sending response...")
-                        self._handle_request(event, conn, client_socket)
-                        return  # Exit after handling one request
-                
-                outbound_data = conn.data_to_send()
-                if outbound_data:
-                    client_socket.sendall(outbound_data)
-                    
-        except Exception as e:
-            print(f"Error handling client: {e}")
-            import traceback
-            traceback.print_exc()
-        finally:
-            client_socket.close()
-            print("Connection closed")
+    def close(self) -> None:
+        """Close the connection"""
+        self.client_socket.close()
+        self.logger.info("Connection closed")
+
+class HTTP2Server:
+    def __init__(self, host: str = 'localhost', port: int = 7700, yaml_path: str = 'test_cases.yaml'):
+        self.host = host
+        self.port = port
+        self.sock = None
+        self.test_manager = TestCaseManager(yaml_path)
+        self.logger = logging.getLogger(__name__)
+
+    def _setup_socket(self, test_id: int) -> None:
+        """Setup server socket with test case configuration"""
+        test_case, suite = self.test_manager.find_test_case(test_id)
+        if not test_case:
+            raise ValueError(f"Test {test_id} not found")
+
+        self.logger.info(f"\nRunning test suite: {suite['name']}")
+        self.logger.info(f"Section: {suite['section']}")
+        self.logger.info(f"Description: {test_case['description']}")
+
+        self._create_socket()
+        self._configure_tls(test_case)
+        self._bind_and_listen()
+
+    def _create_socket(self) -> None:
+        """Create and configure base socket"""
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+    def _configure_tls(self, test_case: Dict[str, Any]) -> None:
+        """Configure TLS if specified in test case"""
+        connection_settings = test_case.get('connection_settings', {})
+        if connection_settings.get('tls_enabled', False):
+            self.logger.info("Setting up TLS...")
+            context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+            context.load_cert_chain(certfile="certs/server.crt", keyfile="certs/server.key")
+            self.sock = context.wrap_socket(self.sock, server_side=True)
+            self.logger.info("TLS established")
+
+    def _bind_and_listen(self) -> None:
+        """Bind socket and start listening"""
+        self.sock.bind((self.host, self.port))
+        self.sock.listen(5)
+        self.sock.settimeout(10)
 
     def run(self, test_id: int) -> None:
+        """Run the server for a specific test case"""
+        test_case, suite = self.test_manager.find_test_case(test_id)
+        if not test_case:
+            raise ValueError(f"Test {test_id} not found")
+
         self._setup_socket(test_id)
-        print(f"Server listening on {self.host}:{self.port}")
+        self.logger.info(f"Server listening on {self.host}:{self.port}")
         
         try:
             while True:
                 client_socket, addr = self.sock.accept()
-                self._handle_client(client_socket, addr)
+                connection = HTTP2Connection(client_socket, addr, test_case)
+                connection.handle()
                 break
         except KeyboardInterrupt:
-            print("\nShutting down server...")
+            self.logger.info("\nShutting down server...")
         finally:
             if self.sock:
                 self.sock.close()
 
 def main():
     try:
-        test_id = 2
+        test_id = 1
         server = HTTP2Server()
         server.run(test_id)
     except Exception as e:
-        print(f"Error: {e}")
+        logging.error(f"Error: {e}", exc_info=True)
         sys.exit(1)
 
 if __name__ == '__main__':

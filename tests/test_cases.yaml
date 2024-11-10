@@ -44,12 +44,15 @@ test_suites:
         headers:
           pseudo_headers:
             method: "GET"
-            scheme: "https"  # Changed to https since we're using TLS
+            scheme: "https"
             path: "/"
             authority: "localhost"
           regular_headers:
             user-agent: "test-client"
         frames:
+          - type: "HEADERS"
+            flags: ["END_STREAM"]
+            stream_id: 1
           - type: "SETTINGS"
             flags: []
             settings: {}

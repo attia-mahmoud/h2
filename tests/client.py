@@ -81,8 +81,9 @@ class HTTP2Client:
         self.sock = socket.create_connection((self.host, self.port))
         print("Socket connected")
         
-        # Handle TLS if enabled
-        if test_case.get('connection_settings', {}).get('tls_enabled'):
+        # Handle TLS if enabled in test case
+        connection_settings = test_case.get('connection_settings', {})
+        if connection_settings.get('tls_enabled', False):  # Default to False if not specified
             print("Setting up TLS...")
             context = ssl.create_default_context()
             context.check_hostname = False
@@ -114,18 +115,6 @@ class HTTP2Client:
         # Send SETTINGS ACK
         print("Sending SETTINGS ACK...")
         self.sock.sendall(self.conn.data_to_send())
-        
-        # Format and send headers
-        print("Sending request headers...")
-        headers = self._format_headers(test_case['headers'])
-        stream_id = self.conn.get_next_available_stream_id()
-        self.conn.send_headers(
-            stream_id=stream_id,
-            headers=headers,
-            end_stream=True
-        )
-        self.sock.sendall(self.conn.data_to_send())
-        print(f"Request sent on stream {stream_id}")
 
     def _send_frames(self, frames: List[Dict]) -> None:
         """Send frames according to test configuration"""
@@ -232,7 +221,8 @@ class HTTP2Client:
 def main():
     client = HTTP2Client()
     try:
-        result = client.run_test(2)  # test ID
+        test_id = 2
+        result = client.run_test(test_id)  # test ID
         print(f"\nTest {'PASSED' if result.success else 'FAILED'}")
         if result.error:
             print(f"Error: {result.error}")

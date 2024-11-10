@@ -3,14 +3,36 @@ import h2.config
 import h2.events
 import socket
 import select
-from typing import List, Tuple
+import yaml
 import ssl
+from typing import List, Tuple, Dict, Optional, Any
+import sys
 
 class HTTP2Server:
-    def __init__(self, host: str = 'localhost', port: int = 7700):
+    def __init__(self, host: str = 'localhost', port: int = 7700, yaml_path: str = 'test_cases.yaml'):
         self.host = host
         self.port = port
         self.sock = None
+        self.yaml_path = yaml_path
+        self.test_data = self._load_yaml()
+        
+    def _load_yaml(self) -> Dict:
+        """Load and parse YAML test configuration"""
+        try:
+            with open(self.yaml_path, 'r') as f:
+                return yaml.safe_load(f)
+        except FileNotFoundError:
+            raise FileNotFoundError(f"{self.yaml_path} not found")
+        except yaml.YAMLError:
+            raise ValueError(f"Invalid YAML in {self.yaml_path}")
+
+    def _find_test_case(self, test_id: int) -> Tuple[Optional[Dict], Optional[Dict]]:
+        """Find test case and its parent suite by ID"""
+        for suite in self.test_data['test_suites']:
+            for case in suite['cases']:
+                if case['id'] == test_id:
+                    return case, suite
+        return None, None
         
     def _create_response_headers(self, stream_id: int) -> List[Tuple[str, str]]:
         return [
@@ -19,14 +41,26 @@ class HTTP2Server:
             ('content-length', str(len('Hello, World!')))
         ]
 
-    def _setup_socket(self) -> None:
+    def _setup_socket(self, test_id: int) -> None:
+        test_case, suite = self._find_test_case(test_id)
+        if not test_case:
+            raise ValueError(f"Test {test_id} not found")
+
+        print(f"\nRunning test suite: {suite['name']}")
+        print(f"Section: {suite['section']}")
+        print(f"Description: {test_case['description']}")
+
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         
-        # Setup TLS
-        context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        context.load_cert_chain(certfile="certs/server.crt", keyfile="certs/server.key")
-        self.sock = context.wrap_socket(self.sock, server_side=True)
+        # Setup TLS if specified in test case
+        connection_settings = test_case.get('connection_settings', {})
+        if connection_settings.get('tls_enabled', False):
+            print("Setting up TLS...")
+            context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+            context.load_cert_chain(certfile="certs/server.crt", keyfile="certs/server.key")
+            self.sock = context.wrap_socket(self.sock, server_side=True)
+            print("TLS established")
         
         self.sock.bind((self.host, self.port))
         self.sock.listen(5)
@@ -115,8 +149,8 @@ class HTTP2Server:
             client_socket.close()
             print("Connection closed")
 
-    def run(self) -> None:
-        self._setup_socket()
+    def run(self, test_id: int) -> None:
+        self._setup_socket(test_id)
         print(f"Server listening on {self.host}:{self.port}")
         
         try:
@@ -131,8 +165,13 @@ class HTTP2Server:
                 self.sock.close()
 
 def main():
-    server = HTTP2Server()
-    server.run()
+    try:
+        test_id = 2
+        server = HTTP2Server()
+        server.run(test_id)
+    except Exception as e:
+        print(f"Error: {e}")
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()

@@ -4,6 +4,7 @@ import h2.events
 import socket
 import select
 from typing import List, Tuple
+import ssl
 
 class HTTP2Server:
     def __init__(self, host: str = 'localhost', port: int = 7700):
@@ -21,9 +22,15 @@ class HTTP2Server:
     def _setup_socket(self) -> None:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        
+        # Setup TLS
+        context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        context.load_cert_chain(certfile="certs/server.crt", keyfile="certs/server.key")
+        self.sock = context.wrap_socket(self.sock, server_side=True)
+        
         self.sock.bind((self.host, self.port))
         self.sock.listen(5)
-        self.sock.settimeout(10)  # Default timeout
+        self.sock.settimeout(10)
 
     def _handle_request(self, event: h2.events.RequestReceived, 
                        conn: h2.connection.H2Connection,
@@ -50,29 +57,51 @@ class HTTP2Server:
     def _handle_client(self, client_socket: socket.socket, addr: Tuple[str, int]) -> None:
         print(f"Connection from {addr}")
         
-        config = h2.config.H2Configuration(client_side=False)
-        conn = h2.connection.H2Connection(config=config)
-        conn.initiate_connection()
-        
-        client_socket.sendall(conn.data_to_send())
-        
         try:
+            # Initialize connection
+            config = h2.config.H2Configuration(client_side=False)
+            conn = h2.connection.H2Connection(config=config)
+            
+            # Wait for client preface
+            print("Waiting for client preface...")
+            preface = client_socket.recv(24)
+            if preface != b'PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n':
+                print(f"Invalid client preface: {preface}")
+                return
+            print("Valid client preface received")
+            
+            # Send server preface (SETTINGS frame)
+            print("Sending server preface and SETTINGS...")
+            conn.initiate_connection()
+            client_socket.sendall(conn.data_to_send())
+            
+            # Receive client SETTINGS
+            print("Waiting for client SETTINGS...")
+            data = client_socket.recv(65535)
+            events = conn.receive_data(data)
+            print(f"Received client SETTINGS: {events}")
+            
+            # Send SETTINGS ACK
+            outbound_data = conn.data_to_send()
+            if outbound_data:
+                client_socket.sendall(outbound_data)
+            
+            # Now wait for the actual request
+            print("Waiting for request...")
             while True:
-                # Use select to implement timeout
-                readable, _, _ = select.select([client_socket], [], [], 5)
-                if not readable:
-                    print("Connection timed out - no data received")
-                    return
-
                 data = client_socket.recv(65535)
                 if not data:
+                    print("Connection closed by client")
                     break
                 
                 events = conn.receive_data(data)
+                print(f"Received events: {events}")
                 
                 for event in events:
                     if isinstance(event, h2.events.RequestReceived):
+                        print("Request received, sending response...")
                         self._handle_request(event, conn, client_socket)
+                        return  # Exit after handling one request
                 
                 outbound_data = conn.data_to_send()
                 if outbound_data:
@@ -80,6 +109,8 @@ class HTTP2Server:
                     
         except Exception as e:
             print(f"Error handling client: {e}")
+            import traceback
+            traceback.print_exc()
         finally:
             client_socket.close()
             print("Connection closed")

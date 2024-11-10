@@ -10,3 +10,5 @@ coverage.xml
 .hypothesis/
 .cache/
 _trial_temp/
+
+.venv

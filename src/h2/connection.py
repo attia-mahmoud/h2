@@ -455,13 +455,13 @@ class H2Connection:
             self.highest_inbound_stream_id
         )
 
-        if stream_id <= highest_stream_id:
-            raise StreamIDTooLowError(stream_id, highest_stream_id)
+        # if stream_id <= highest_stream_id:
+        #     raise StreamIDTooLowError(stream_id, highest_stream_id)
 
-        if (stream_id % 2) != int(allowed_ids):
-            raise ProtocolError(
-                "Invalid stream ID for peer."
-            )
+        # if (stream_id % 2) != int(allowed_ids):
+        #     raise ProtocolError(
+        #         "Invalid stream ID for peer."
+        #     )
 
         s = H2Stream(
             stream_id,

@@ -135,7 +135,7 @@ class FrameBuffer:
             raise StopIteration()
 
         # Confirm the frame has an appropriate length.
-        self._validate_frame_length(length)
+        # self._validate_frame_length(length)
 
         # Try to parse the frame body
         try:

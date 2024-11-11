@@ -3,10 +3,10 @@
    2. "Once TLS negotiation is complete, both the client and the server MUST send a connection preface."
 
 **Section 3.3 (Starting HTTP/2 with Prior Knowledge):**
-   3. "A client that knows that a server supports HTTP/2 can establish a TCP connection and send the connection preface (Section 3.4) followed by HTTP/2 frames. Servers can identify these connections by the presence of the connection preface. This only aﬀects the establishment of HTTP/2 connections over cleartext TCP; HTTP/2 connections over TLS use MUST protocol negotiation in TLS [TLS-ALPN]. Likewise, the server send a connection preface (Section 3.4)."
+   3. "A client that knows that a server supports HTTP/2 can establish a TCP connection and send the connection preface (Section 3.4) followed by HTTP/2 frames. Servers can identify these connections by the presence of the connection preface. This only aﬀects the establishment of HTTP/2 connections over cleartext TCP; HTTP/2 connections over TLS MUST use protocol negotiation in TLS [TLS-ALPN]. Likewise, the server MUST send a connection preface (Section 3.4)."
 
 **Section 3.4 (HTTP/2 Connection Preface):**
-   4. "That is, the connection preface starts with the string "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n". This sequence MUST be followed by a SETTINGS frame (Section 6.5), which be empty."
+   4. "That is, the connection preface starts with the string "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n". This sequence MUST be followed by a SETTINGS frame (Section 6.5), which MAY be empty."
    5. "The server connection preface consists of a potentially empty SETTINGS frame (Section 6.5) that MUST be the first frame the server sends in the HTTP/2 connection."
    6. "The SETTINGS frames received from a peer as part of the connection preface MUST be acknowledged (see Section 6.5.3) after sending the connection preface."
    7. "Clients and servers MUST treat an invalid connection preface as a connection error (Section 5.4.1) of type PROTOCOL_ERROR."

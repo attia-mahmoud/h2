@@ -38,14 +38,13 @@ class HTTP2Connection:
 
     def setup(self, test_case: Dict[str, Any]) -> None:
         """Setup and initialize HTTP/2 connection"""
-        self.logger.info("Setting up client connection...")
         self._create_socket(test_case)
         self._setup_tls(test_case)
         self._initialize_connection(test_case)
 
     def _create_socket(self, test_case: Dict[str, Any]) -> None:
         self.sock = socket.create_connection((self.host, self.port))
-        self.logger.debug("Socket connected")
+        self.logger.info("Socket connected")
 
     def _setup_tls(self, test_case: Dict[str, Any]) -> None:
         """Setup TLS if enabled in test case"""
@@ -89,30 +88,11 @@ class HTTP2Connection:
         if not data:
             raise Exception("No server SETTINGS received")
         events = self.conn.receive_data(data)
-        self.logger.debug(f"Received server SETTINGS: {events}")
+        self.logger.info(f"Received server SETTINGS: {events}")
         self.sock.sendall(self.conn.data_to_send())
 
-    def send_frames(self, frames: List[Dict]) -> None:
-        """Send frames according to test configuration"""
-        for frame in frames:
-            frame_type = FrameType(frame['type'].upper())
-            
-            if frame_type == FrameType.HEADERS:
-                stream_id = frame.get('stream_id', self.conn.get_next_available_stream_id())
-                end_stream = 'END_STREAM' in frame.get('flags', [])
-                headers = self._format_headers(frame.get('headers', {}))
-                self.conn.send_headers(
-                    stream_id=stream_id,
-                    headers=headers,
-                    end_stream=end_stream
-                )
-            elif frame_type == FrameType.SETTINGS:
-                self.conn.update_settings(frame.get('settings', {}))
-            
-            self.sock.sendall(self.conn.data_to_send())
-
-    def _format_headers(self, headers: Dict) -> List[Tuple[str, str]]:
-        """Format headers from frame configuration"""
+    def _format_headers(self, headers) -> List[Tuple[str, str]]:
+        """Convert YAML header format to h2 format"""
         formatted_headers = []
         
         if 'pseudo_headers' in headers:
@@ -124,6 +104,44 @@ class HTTP2Connection:
                 formatted_headers.append((name, str(value)))
         
         return formatted_headers
+
+    def send_frames(self, frames: List[Dict]) -> None:
+        """Send frames according to test configuration"""
+        for frame in frames:
+            frame_type = FrameType(frame['type'].upper())
+            
+            if frame_type == FrameType.SETTINGS:
+                self.conn.update_settings(frame.get('settings', {}))
+            elif frame_type == FrameType.HEADERS:
+                stream_id = frame.get('stream_id', self.conn.get_next_available_stream_id())
+                end_stream = 'END_STREAM' in frame.get('flags', [])
+                headers = self._format_headers(frame.get('headers'))
+                self.conn.send_headers(
+                    stream_id=stream_id,
+                    headers=headers,
+                    end_stream=end_stream
+                )
+            elif frame_type == FrameType.DATA:
+                stream_id = frame.get('stream_id', 1)
+                end_stream = 'END_STREAM' in frame.get('flags', [])
+                payload_size = frame.get('payload_size', 0)
+                
+                # Generate dummy data of specified size
+                data = b'X' * payload_size
+                
+                try:
+                    self.conn.send_data(
+                        stream_id=stream_id,
+                        data=data,
+                        end_stream=end_stream
+                    )
+                except h2.exceptions.FrameTooLargeError as e:
+                    self.logger.error(f"Frame too large: {e}")
+                    raise
+            
+            outbound_data = self.conn.data_to_send()
+            if outbound_data:
+                self.sock.sendall(outbound_data)
 
     def receive_response(self) -> str:
         """Handle server response"""
@@ -138,7 +156,7 @@ class HTTP2Connection:
             
             for event in events:
                 if isinstance(event, h2.events.ResponseReceived):
-                    self.logger.debug(f"Response headers: {event.headers}")
+                    self.logger.info(f"Response headers: {event.headers}")
                 elif isinstance(event, h2.events.DataReceived):
                     response_data += event.data
                     self.conn.acknowledge_received_data(
@@ -182,21 +200,6 @@ class TestCaseManager:
                 if case['id'] == test_id:
                     return case, suite
         return None, None
-
-    @staticmethod
-    def format_headers(headers: Dict) -> List[Tuple[str, str]]:
-        """Convert YAML header format to h2 format"""
-        formatted_headers = []
-        
-        if 'pseudo_headers' in headers:
-            for name, value in headers['pseudo_headers'].items():
-                formatted_headers.append((f":{name}", str(value)))
-        
-        if 'regular_headers' in headers:
-            for name, value in headers['regular_headers'].items():
-                formatted_headers.append((name, str(value)))
-        
-        return formatted_headers
 
 class HTTP2Client:
     def __init__(self, host: str = 'localhost', port: int = 7700, yaml_path: str = 'test_cases.yaml'):
@@ -250,7 +253,7 @@ class HTTP2Client:
 def main():
     client = HTTP2Client()
     try:
-        test_id = 1
+        test_id = 8
         result = client.run_test(test_id)
         print(f"\nTest {'PASSED' if result.success else 'FAILED'}")
         if result.error:

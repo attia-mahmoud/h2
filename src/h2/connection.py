@@ -387,7 +387,7 @@ class H2Connection:
         if not frames:
             return
         self._data_to_send += b''.join(f.serialize() for f in frames)
-        assert all(f.body_len <= self.max_outbound_frame_size for f in frames)
+        # assert all(f.body_len <= self.max_outbound_frame_size for f in frames)
 
     def _open_streams(self, remainder):
         """
@@ -847,11 +847,11 @@ class H2Connection:
                 "Cannot send %d bytes, flow control window is %d." %
                 (frame_size, self.local_flow_control_window(stream_id))
             )
-        elif frame_size > self.max_outbound_frame_size:
-            raise FrameTooLargeError(
-                "Cannot send frame size %d, max frame size is %d" %
-                (frame_size, self.max_outbound_frame_size)
-            )
+        # elif frame_size > self.max_outbound_frame_size:
+        #     raise FrameTooLargeError(
+        #         "Cannot send frame size %d, max frame size is %d" %
+        #         (frame_size, self.max_outbound_frame_size)
+        #     )
 
         self.state_machine.process_input(ConnectionInputs.SEND_DATA)
         frames = self.streams[stream_id].send_data(

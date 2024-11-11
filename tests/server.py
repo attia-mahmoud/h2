@@ -22,16 +22,10 @@ class FrameType(Enum):
 
 @dataclass
 class ServerResponse:
-    status: str = "200"
-    content_type: str = "text/plain"
-    body: str = "Hello, World!"
+    def __init__(self, headers: List[Tuple[str, str]], body: str):
+        self.headers = headers
+        self.body = body
 
-    def to_headers(self) -> List[Tuple[str, str]]:
-        return [
-            (':status', self.status),
-            ('content-type', self.content_type),
-            ('content-length', str(len(self.body)))
-        ]
 
 class TestCaseManager:
     def __init__(self, yaml_path: str):
@@ -64,7 +58,6 @@ class HTTP2Connection:
         self.test_case = test_case
         self.conn = None
         self.logger = logging.getLogger(__name__)
-        self.frame_sequence = []
 
     def handle(self) -> None:
         """Handle client connection"""
@@ -100,18 +93,8 @@ class HTTP2Connection:
             
             if frame_type == FrameType.SETTINGS:
                 self.conn.update_settings(frame.get('settings', {}))
-            elif frame_type == FrameType.HEADERS:
-                stream_id = frame.get('stream_id', 1)
-                end_stream = 'END_STREAM' in frame.get('flags', [])
-                headers = self._format_headers(frame.get('headers', {}))
-                self.conn.send_headers(
-                    stream_id=stream_id,
-                    headers=headers,
-                    end_stream=end_stream
-                )
             
             self.client_socket.sendall(self.conn.data_to_send())
-            self.frame_sequence.append(frame_type)
 
     def _format_headers(self, headers: Dict) -> List[Tuple[str, str]]:
         """Format headers from frame configuration"""
@@ -137,13 +120,14 @@ class HTTP2Connection:
                 break
             
             events = self.conn.receive_data(data)
-            self.logger.debug(f"Received events: {events}")
+            self.logger.info(f"Received events: {events}")
             
             for event in events:
                 if isinstance(event, h2.events.RequestReceived):
                     self.logger.info("Request received, sending response...")
                     self._handle_request(event)
-                    return  # Exit after handling one request
+                elif isinstance(event, h2.events.DataReceived):
+                    self.logger.info(f"Received DATA frame with payload size: {len(event.data)} bytes")
             
             outbound_data = self.conn.data_to_send()
             if outbound_data:
@@ -153,23 +137,34 @@ class HTTP2Connection:
         """Handle incoming request"""
         self.logger.info(f"Request headers: {event.headers}")
         
-        response = ServerResponse()
-        
-        # Send response headers
-        self.conn.send_headers(
-            stream_id=event.stream_id,
-            headers=response.to_headers(),
-            end_stream=False
-        )
-        
-        # Send response data
-        self.conn.send_data(
-            stream_id=event.stream_id,
-            data=response.body.encode('utf-8'),
-            end_stream=True
-        )
-        
-        self.client_socket.sendall(self.conn.data_to_send())
+        # Send response
+        for frame in self.test_case['server_frames']:
+            frame_type = FrameType(frame['type'].upper())
+            if frame_type == FrameType.HEADERS:
+                stream_id = frame.get('stream_id', 1)
+                end_stream = 'END_STREAM' in frame.get('flags', [])
+                headers = self._format_headers(frame.get('headers', {}))
+                body = frame.get('body', '')
+
+                response = ServerResponse(headers=headers, body=body)
+            
+                # Send response headers
+                self.conn.send_headers(
+                    stream_id=stream_id,
+                    headers=response.headers,
+                    end_stream=False
+                )
+                
+                # Send response data
+                self.conn.send_data(
+                    stream_id=stream_id,
+                    data=response.body.encode('utf-8'),
+                    end_stream=True
+                )
+                
+                self.client_socket.sendall(self.conn.data_to_send())
+
+                self.logger.info("Response sent")
 
     def close(self) -> None:
         """Close the connection"""
@@ -242,7 +237,7 @@ class HTTP2Server:
 
 def main():
     try:
-        test_id = 1
+        test_id = 8
         server = HTTP2Server()
         server.run(test_id)
     except Exception as e:

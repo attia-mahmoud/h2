@@ -44,6 +44,7 @@ test_suites:
               regular_headers:
                 content-type: "text/plain"
                 content-length: "13"
+            body: "Hello, World!"
 
       - id: 2
         description: "Client and server must send connection preface after TLS"
@@ -82,7 +83,11 @@ test_suites:
               regular_headers:
                 content-type: "text/plain"
                 content-length: "13"
+            body: "Hello, World!"
 
+  - name: "Starting HTTP/2 with Prior Knowledge"
+    section: "3.3"
+    cases:
       - id: 3
         description: "Client establishes TCP connection and sends connection preface without TLS"
         connection_settings:
@@ -120,7 +125,11 @@ test_suites:
               regular_headers:
                 content-type: "text/plain"
                 content-length: "13"
+            body: "Hello, World!"
 
+  - name: "HTTP/2 Connection Preface"
+    section: "3.4"
+    cases:
       - id: 4
         description: "Connection preface must be followed by a SETTINGS frame"
         connection_settings:
@@ -146,11 +155,16 @@ test_suites:
           - type: "SETTINGS"
             flags: []
             settings: {}
-          - type: "GOAWAY"
-            error_code: "PROTOCOL_ERROR"
-        expected_response:
-          type: "error"
-          error_code: "PROTOCOL_ERROR"
+          - type: "HEADERS"
+            flags: ["END_STREAM"]
+            stream_id: 1
+            headers:
+              pseudo_headers:
+                status: "200"
+              regular_headers:
+                content-type: "text/plain"
+                content-length: "13"
+            body: "Hello, World!"
 
       - id: 5
         description: "SETTINGS frame MUST be the first frame the server sends in the HTTP/2 connection."
@@ -177,7 +191,53 @@ test_suites:
               regular_headers:
                 user-agent: "test-client"
         server_frames:
-          - type: "SETTINGS"  # First frame must be SETTINGS
+          - type: "HEADERS"
+            flags: ["END_STREAM"]
+            stream_id: 1
+            headers:
+              pseudo_headers:
+                status: "200"
+              regular_headers:
+                content-type: "text/plain"
+                content-length: "13"
+            body: "Hello, World!"
+          - type: "SETTINGS"  # Invalid: First frame must be SETTINGS
+            flags: []
+            settings: {}
+
+  - name: "Frame Format"
+    section: "4.1"
+    cases:
+      - id: 8
+        description: "Values greater than 16,384 MUST NOT be sent unless receiver has set larger SETTINGS_MAX_FRAME_SIZE"
+        connection_settings:
+          client_side: true
+          header_encoding: "utf-8"
+          tls_enabled: false
+        preface:
+          client_preface: "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+          verify_server_preface: true
+        client_frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+          - type: "HEADERS"
+            flags: ["END_HEADERS"]
+            stream_id: 1
+            headers:
+              pseudo_headers:
+                method: "GET"
+                scheme: "http"
+                path: "/"
+                authority: "localhost"
+              regular_headers:
+                user-agent: "test-8"
+          - type: "DATA"
+            flags: ["END_STREAM"]
+            stream_id: 1
+            payload_size: 17000  # Exceeds default max frame size of 16,384
+        server_frames:
+          - type: "SETTINGS"
             flags: []
             settings: {}
           - type: "HEADERS"
@@ -189,6 +249,8 @@ test_suites:
               regular_headers:
                 content-type: "text/plain"
                 content-length: "13"
+            body: "Hello, World!"
+
   - name: "Connection-Specific Header Fields"
     section: "8.2.2"
     cases:

@@ -24,7 +24,7 @@
 
 **Section 4.3 (Field Section Compression and Decompression):**
    15. "Field blocks MUST be transmitted as a contiguous sequence of frames, with no interleaved frames of any other type or from any other stream."
-   16. "A receiver terminate the connection with a MUST connection error (Section 5.4.1) of type COMPRESSION_ERROR if it does not decompress a field block."
+   16. "A receiver MUST terminate the connection with a connection error (Section 5.4.1) of type COMPRESSION_ERROR if it does not decompress a field block."
    17. "A decoding error in a field block MUST be treated as a connection error (Section 5.4.1) of type COMPRESSION_ERROR."
 
 **Section 4.3.1 (Compression State):**

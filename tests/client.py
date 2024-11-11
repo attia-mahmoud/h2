@@ -20,6 +20,8 @@ class FrameType(Enum):
     SETTINGS = "SETTINGS"
     DATA = "DATA"
     WINDOW_UPDATE = "WINDOW_UPDATE"
+    RST_STREAM = "RST_STREAM"
+    PRIORITY = "PRIORITY"
 
 @dataclass
 class TestResult:
@@ -112,6 +114,17 @@ class HTTP2Connection:
             
             if frame_type == FrameType.SETTINGS:
                 self.conn.update_settings(frame.get('settings', {}))
+            elif frame_type == FrameType.PRIORITY:
+                stream_id = frame.get('stream_id')
+                depends_on = frame.get('depends_on', 0)
+                weight = frame.get('weight', 16)
+                exclusive = frame.get('exclusive', False)
+                self.conn.prioritize(
+                    stream_id=stream_id,
+                    depends_on=depends_on,
+                    weight=weight,
+                    exclusive=exclusive
+                )
             elif frame_type == FrameType.HEADERS:
                 stream_id = frame.get('stream_id', self.conn.get_next_available_stream_id())
                 end_stream = 'END_STREAM' in frame.get('flags', [])
@@ -137,7 +150,11 @@ class HTTP2Connection:
                     )
                 except h2.exceptions.FrameTooLargeError as e:
                     self.logger.error(f"Frame too large: {e}")
-                    raise
+                    raise 
+            elif frame_type == FrameType.RST_STREAM:
+                stream_id = frame.get('stream_id')
+                error_code = frame.get('error_code', 'CANCEL')
+                self.conn.reset_stream(stream_id, error_code=getattr(h2.errors.ErrorCodes, error_code))
             
             outbound_data = self.conn.data_to_send()
             if outbound_data:

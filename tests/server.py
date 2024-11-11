@@ -166,6 +166,12 @@ class HTTP2Connection:
 
                 self.logger.info("Response sent")
 
+            elif frame_type == FrameType.RST_STREAM:
+                stream_id = frame.get('stream_id')
+                error_code = frame.get('error_code', 'CANCEL')
+                self.conn.reset_stream(stream_id, error_code=getattr(h2.errors.ErrorCodes, error_code))
+            
+
     def close(self) -> None:
         """Close the connection"""
         self.client_socket.close()

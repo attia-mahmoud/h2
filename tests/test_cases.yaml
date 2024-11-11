@@ -251,6 +251,232 @@ test_suites:
                 content-length: "13"
             body: "Hello, World!"
 
+  - name: "Frame Size"
+    section: "4.2"
+    cases:
+      - id: 13
+        description: "An endpoint MUST send an error code of FRAME_SIZE_ERROR if a frame exceeds the size defined in SETTINGS_MAX_FRAME_SIZE."
+        connection_settings:
+          client_side: true
+          header_encoding: "utf-8"
+          tls_enabled: false
+        preface:
+          client_preface: "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+          verify_server_preface: true
+        client_frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+          - type: "HEADERS"
+            flags: ["END_HEADERS"]
+            stream_id: 1
+            headers:
+              pseudo_headers:
+                method: "GET"
+                scheme: "http"
+                path: "/"
+                authority: "localhost"
+              regular_headers:
+                user-agent: "test-8"
+          - type: "DATA"
+            flags: ["END_STREAM"]
+            stream_id: 1
+            payload_size: 17000  # Exceeds default max frame size of 16,384
+        server_frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+          - type: "HEADERS"
+            flags: ["END_STREAM"]
+            stream_id: 1
+            headers:
+              pseudo_headers:
+                status: "200"
+              regular_headers:
+                content-type: "text/plain"
+                content-length: "13"
+            body: "Hello, World!"
+
+  - name: "Stream Identifiers"
+    section: "5.1.1"
+    cases:
+      - id: 29
+        description: "Streams initiated by a client MUST use odd-numbered stream identifiers."
+        connection_settings:
+          client_side: true
+          header_encoding: "utf-8"
+          tls_enabled: false
+        preface:
+          client_preface: "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+          verify_server_preface: true
+        client_frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+          - type: "HEADERS"
+            flags: ["END_HEADERS"]
+            stream_id: 2
+            headers:
+              pseudo_headers:
+                method: "GET"
+                scheme: "http"
+                path: "/"
+                authority: "localhost"
+              regular_headers:
+                user-agent: "test-8"
+          - type: "DATA"
+            flags: ["END_STREAM"]
+            stream_id: 2
+            payload_size: 1000
+        server_frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+          - type: "HEADERS"
+            flags: ["END_STREAM"]
+            stream_id: 4
+            headers:
+              pseudo_headers:
+                status: "200"
+              regular_headers:
+                content-type: "text/plain"
+                content-length: "13"
+            body: "Hello, World!"
+
+      - id: 30
+        description: "Streams initiated by a server MUST use even-numbered stream identifiers."
+        connection_settings:
+          client_side: true
+          header_encoding: "utf-8"
+          tls_enabled: false
+        preface:
+          client_preface: "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+          verify_server_preface: true
+        client_frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+          - type: "HEADERS"
+            flags: ["END_HEADERS"]
+            stream_id: 1
+            headers:
+              pseudo_headers:
+                method: "GET"
+                scheme: "http"
+                path: "/"
+                authority: "localhost"
+              regular_headers:
+                user-agent: "test-8"
+          - type: "DATA"
+            flags: ["END_STREAM"]
+            stream_id: 1
+            payload_size: 1000
+        server_frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+          - type: "HEADERS"
+            flags: ["END_STREAM"]
+            stream_id: 3
+            headers:
+              pseudo_headers:
+                status: "200"
+              regular_headers:
+                content-type: "text/plain"
+                content-length: "13"
+            body: "Hello, World!"
+
+  - name: "Stream Error Handling"
+    section: "5.4.2"
+    cases:
+      - id: 40
+        description: "An endpoint MUST NOT send a RST_STREAM in response to a RST_STREAM frame"
+        connection_settings:
+          client_side: true
+          header_encoding: "utf-8"
+          tls_enabled: false
+        client_frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+          - type: "RST_STREAM"  # Send first RST_STREAM
+            stream_id: 1
+            error_code: "CANCEL"
+        server_frames:
+          - type: "RST_STREAM"  # Send second RST_STREAM (non-conformant)
+            stream_id: 1
+            error_code: "CANCEL"
+
+  - name: "HEADERS Frame"
+    section: "6.2"
+    cases:
+      - id: 55
+        description: "An endpoint MUST NOT send a RST_STREAM in response to a RST_STREAM frame"
+        connection_settings:
+          client_side: true
+          header_encoding: "utf-8"
+          tls_enabled: false
+        client_frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+          - type: "HEADERS"
+            flags: ["END_STREAM"]
+            stream_id: 0
+            headers:
+              pseudo_headers:
+                method: "GET"
+                scheme: "http"
+                path: "/"
+                authority: "localhost"
+        server_frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+          - type: "HEADERS"
+            flags: ["END_STREAM"]
+            stream_id: 4
+            headers:
+              pseudo_headers:
+                status: "200"
+              regular_headers:
+                content-type: "text/plain"
+                content-length: "13"
+            body: "Hello, World!"
+  
+  - name: "PRIORITY Frame"
+    section: "6.3"
+    cases:
+      - id: 57
+        description: "If a PRIORITY frame is received with a stream identifier of 0x00, the recipient MUST respond with a connection error of type PROTOCOL_ERROR"
+        connection_settings:
+          client_side: true
+          header_encoding: "utf-8"
+          tls_enabled: false
+        client_frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+          - type: "PRIORITY"
+            stream_id: 0  # Non-conformant: using stream ID 0x00
+            weight: 16
+            depends_on: 0
+            exclusive: false
+        server_frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+          - type: "HEADERS"
+            flags: ["END_STREAM"]
+            stream_id: 4
+            headers:
+              pseudo_headers:
+                status: "200"
+              regular_headers:
+                content-type: "text/plain"
+                content-length: "13"
+            body: "Hello, World!"
+
   - name: "Connection-Specific Header Fields"
     section: "8.2.2"
     cases:

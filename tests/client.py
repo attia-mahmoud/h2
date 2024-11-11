@@ -119,12 +119,34 @@ class HTTP2Connection:
                 depends_on = frame.get('depends_on', 0)
                 weight = frame.get('weight', 16)
                 exclusive = frame.get('exclusive', False)
-                self.conn.prioritize(
-                    stream_id=stream_id,
-                    depends_on=depends_on,
-                    weight=weight,
-                    exclusive=exclusive
+                
+                # If payload_length is specified, send raw frame with incorrect length
+                if 'payload_length' in frame:
+                    # Create a raw PRIORITY frame with incorrect length
+                    frame_data = (
+                        depends_on.to_bytes(4, byteorder='big') +  # 4 bytes for depends_on
+                        weight.to_bytes(1, byteorder='big') +      # 1 byte for weight
+                        b'\x00'  # Extra byte to make length incorrect
+                    )
+                    
+                    # Frame header: length (3 bytes), type (1 byte), flags (1 byte), stream id (4 bytes)
+                    frame_header = (
+                        len(frame_data).to_bytes(3, byteorder='big') +  # Length
+                        b'\x02' +  # Type (2 for PRIORITY)
+                        b'\x00' +  # Flags
+                        stream_id.to_bytes(4, byteorder='big')  # Stream ID
+                    )
+                    
+                    self.sock.sendall(frame_header + frame_data)
+                else:
+                    # Normal PRIORITY frame
+                    self.conn.prioritize(
+                        stream_id=stream_id,
+                        depends_on=depends_on,
+                        weight=weight,
+                        exclusive=exclusive
                 )
+        
             elif frame_type == FrameType.HEADERS:
                 stream_id = frame.get('stream_id', self.conn.get_next_available_stream_id())
                 end_stream = 'END_STREAM' in frame.get('flags', [])
@@ -142,20 +164,37 @@ class HTTP2Connection:
                 # Generate dummy data of specified size
                 data = b'X' * payload_size
                 
-                try:
-                    self.conn.send_data(
-                        stream_id=stream_id,
-                        data=data,
-                        end_stream=end_stream
-                    )
-                except h2.exceptions.FrameTooLargeError as e:
-                    self.logger.error(f"Frame too large: {e}")
-                    raise 
+
+                self.conn.send_data(
+                    stream_id=stream_id,
+                    data=data,
+                    end_stream=end_stream
+                )
             elif frame_type == FrameType.RST_STREAM:
                 stream_id = frame.get('stream_id')
                 error_code = frame.get('error_code', 'CANCEL')
-                self.conn.reset_stream(stream_id, error_code=getattr(h2.errors.ErrorCodes, error_code))
-            
+                
+                # If payload_length is specified, send raw frame with incorrect length
+                if 'payload_length' in frame:
+                    # Create a raw RST_STREAM frame with incorrect length
+                    frame_data = (
+                        getattr(h2.errors.ErrorCodes, error_code).to_bytes(4, byteorder='big') +  # 4 bytes for error code
+                        b'\x00'  # Extra byte to make length incorrect
+                    )
+                    
+                    # Frame header: length (3 bytes), type (1 byte), flags (1 byte), stream id (4 bytes)
+                    frame_header = (
+                        len(frame_data).to_bytes(3, byteorder='big') +  # Length
+                        b'\x03' +  # Type (3 for RST_STREAM)
+                        b'\x00' +  # Flags
+                        stream_id.to_bytes(4, byteorder='big')  # Stream ID
+                    )
+                    
+                    self.sock.sendall(frame_header + frame_data)
+                else:
+                    # Normal RST_STREAM frame
+                    self.conn.reset_stream(stream_id, error_code=getattr(h2.errors.ErrorCodes, error_code))
+
             outbound_data = self.conn.data_to_send()
             if outbound_data:
                 self.sock.sendall(outbound_data)

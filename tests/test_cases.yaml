@@ -556,6 +556,160 @@ test_suites:
                 content-length: "13"
             body: "Hello, World!"
 
+  - name: "SETTINGS Frame"
+    section: "6.5"
+    cases:
+      - id: 66
+        description: "A SETTINGS frame MUST be sent by both endpoints at the start of a connection and MAY be sent at any other time by either endpoint over the lifetime of the connection."
+        connection_settings:
+          client_side: true
+          header_encoding: "utf-8"
+          tls_enabled: false
+        client_frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+          - type: "HEADERS"
+            flags: ["END_STREAM"]
+            stream_id: 0
+            headers:
+              pseudo_headers:
+                method: "GET"
+                scheme: "http"
+                path: "/"
+                authority: "localhost"
+        server_frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+          - type: "HEADERS"
+            flags: ["END_STREAM"]
+            stream_id: 4
+            headers:
+              pseudo_headers:
+                status: "200"
+              regular_headers:
+                content-type: "text/plain"
+                content-length: "13"
+            body: "Hello, World!"
+      - id: 68
+        description: "When set, the ACK flag indicates that this frame acknowledges receipt and application of the peer's SETTINGS frame. When this bit is set, the frame payload of the SETTINGS frame MUST be empty."
+        connection_settings:
+          client_side: true
+          header_encoding: "utf-8"
+          tls_enabled: false
+        preface:
+          client_preface: "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+          verify_server_preface: true
+        client_frames:
+          - type: "SETTINGS"  # Non-conformant: ACK flag set with non-empty payload
+            flags: ["ACK"]
+            settings:
+              SETTINGS_MAX_CONCURRENT_STREAMS: 100  # This makes the payload non-empty
+        server_frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+      - id: 70
+        description: "The stream identifier for a SETTINGS frame MUST be zero (0x00)."
+        connection_settings:
+          client_side: true
+          header_encoding: "utf-8"
+          tls_enabled: false
+        preface:
+          client_preface: "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+          verify_server_preface: true
+        client_frames:
+          - type: "SETTINGS"  # Non-conformant: non-zero stream ID
+            stream_id: 1  # Should be 0x00
+            flags: []
+            settings:
+              SETTINGS_MAX_CONCURRENT_STREAMS: 100
+        server_frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+      - id: 73
+        description: "A SETTINGS frame with a length other than a multiple of 6 octets MUST be treated as a connection error (Section 5.4.1) of type FRAME_SIZE_ERROR."
+        connection_settings:
+          client_side: true
+          header_encoding: "utf-8"
+          tls_enabled: false
+        preface:
+          client_preface: "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+          verify_server_preface: true
+        client_frames:
+          - type: "SETTINGS"  # Non-conformant: payload length not multiple of 6
+            flags: []
+            raw_payload: true  # Signal to use raw payload
+            settings:
+              SETTINGS_MAX_CONCURRENT_STREAMS: 100
+            extra_bytes: 1  # Add one extra byte to make length invalid
+        server_frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+  - name: "Defined Settings"
+    section: "6.5.2"
+    cases:
+      - id: 74
+        description: "A server MUST NOT send a PUSH_PROMISE frame if it receives the SETTINGS_ENABLE_PUSH (0x02) parameter set to a value of 0. Testing proxy behavior when server violates this."
+        connection_settings:
+          client_side: true
+          header_encoding: "utf-8"
+          tls_enabled: false
+        preface:
+          client_preface: "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+          verify_server_preface: true
+        client_frames:
+          - type: "SETTINGS"
+            flags: []
+            settings:
+              SETTINGS_ENABLE_PUSH: 0  # Client explicitly disables server push
+          - type: "HEADERS"
+            flags: ["END_STREAM", "END_HEADERS"]
+            stream_id: 1
+            headers:
+              pseudo_headers:
+                method: "GET"
+                scheme: "http"
+                path: "/"
+                authority: "localhost"
+              regular_headers:
+                accept: "text/html"
+        server_frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+          - type: "PUSH_PROMISE"  # Non-conformant: Server sends PUSH_PROMISE despite push being disabled
+            flags: ["END_HEADERS"]
+            stream_id: 1
+            promised_stream_id: 2
+            headers:
+              pseudo_headers:
+                method: "GET"
+                scheme: "http"
+                path: "/style.css"
+                authority: "localhost"
+      - id: 76
+        description: "The initial value of SETTINGS_ENABLE_PUSH is 1. Any value other than 0 or 1 MUST be treated as a connection error (Section 5.4.1) of type PROTOCOL_ERROR."
+        connection_settings:
+          client_side: true
+          header_encoding: "utf-8"
+          tls_enabled: false
+        preface:
+          client_preface: "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+          verify_server_preface: true
+        client_frames:
+          - type: "SETTINGS"  # Non-conformant: invalid SETTINGS_ENABLE_PUSH value
+            flags: []
+            settings:
+              SETTINGS_ENABLE_PUSH: 2  # Invalid value - must be 0 or 1
+        server_frames:
+          - type: "SETTINGS"
+            flags: []
+            settings: {}
+
   - name: "Connection-Specific Header Fields"
     section: "8.2.2"
     cases:

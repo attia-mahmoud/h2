@@ -113,91 +113,129 @@ class HTTP2Connection:
             frame_type = FrameType(frame['type'].upper())
             
             if frame_type == FrameType.SETTINGS:
-                self.conn.update_settings(frame.get('settings', {}))
+                self._send_settings_frame(frame)
             elif frame_type == FrameType.PRIORITY:
-                stream_id = frame.get('stream_id')
-                depends_on = frame.get('depends_on', 0)
-                weight = frame.get('weight', 16)
-                exclusive = frame.get('exclusive', False)
-                
-                # If payload_length is specified, send raw frame with incorrect length
-                if 'payload_length' in frame:
-                    # Create a raw PRIORITY frame with incorrect length
-                    frame_data = (
-                        depends_on.to_bytes(4, byteorder='big') +  # 4 bytes for depends_on
-                        weight.to_bytes(1, byteorder='big') +      # 1 byte for weight
-                        b'\x00'  # Extra byte to make length incorrect
-                    )
-                    
-                    # Frame header: length (3 bytes), type (1 byte), flags (1 byte), stream id (4 bytes)
-                    frame_header = (
-                        len(frame_data).to_bytes(3, byteorder='big') +  # Length
-                        b'\x02' +  # Type (2 for PRIORITY)
-                        b'\x00' +  # Flags
-                        stream_id.to_bytes(4, byteorder='big')  # Stream ID
-                    )
-                    
-                    self.sock.sendall(frame_header + frame_data)
-                else:
-                    # Normal PRIORITY frame
-                    self.conn.prioritize(
-                        stream_id=stream_id,
-                        depends_on=depends_on,
-                        weight=weight,
-                        exclusive=exclusive
-                )
-        
+                self._send_priority_frame(frame)
             elif frame_type == FrameType.HEADERS:
-                stream_id = frame.get('stream_id', self.conn.get_next_available_stream_id())
-                end_stream = 'END_STREAM' in frame.get('flags', [])
-                headers = self._format_headers(frame.get('headers'))
-                self.conn.send_headers(
-                    stream_id=stream_id,
-                    headers=headers,
-                    end_stream=end_stream
-                )
+                self._send_headers_frame(frame)
             elif frame_type == FrameType.DATA:
-                stream_id = frame.get('stream_id', 1)
-                end_stream = 'END_STREAM' in frame.get('flags', [])
-                payload_size = frame.get('payload_size', 0)
-                
-                # Generate dummy data of specified size
-                data = b'X' * payload_size
-                
-
-                self.conn.send_data(
-                    stream_id=stream_id,
-                    data=data,
-                    end_stream=end_stream
-                )
+                self._send_data_frame(frame)
             elif frame_type == FrameType.RST_STREAM:
-                stream_id = frame.get('stream_id')
-                error_code = frame.get('error_code', 'CANCEL')
-                
-                # If payload_length is specified, send raw frame with incorrect length
-                if 'payload_length' in frame:
-                    # Create a raw RST_STREAM frame with incorrect length
-                    frame_data = (
-                        getattr(h2.errors.ErrorCodes, error_code).to_bytes(4, byteorder='big') +  # 4 bytes for error code
-                        b'\x00'  # Extra byte to make length incorrect
-                    )
-                    
-                    # Frame header: length (3 bytes), type (1 byte), flags (1 byte), stream id (4 bytes)
-                    frame_header = (
-                        len(frame_data).to_bytes(3, byteorder='big') +  # Length
-                        b'\x03' +  # Type (3 for RST_STREAM)
-                        b'\x00' +  # Flags
-                        stream_id.to_bytes(4, byteorder='big')  # Stream ID
-                    )
-                    
-                    self.sock.sendall(frame_header + frame_data)
-                else:
-                    # Normal RST_STREAM frame
-                    self.conn.reset_stream(stream_id, error_code=getattr(h2.errors.ErrorCodes, error_code))
+                self._send_rst_stream_frame(frame)
 
             outbound_data = self.conn.data_to_send()
             if outbound_data:
                 self.sock.sendall(outbound_data)
+
+    def _send_settings_frame(self, frame: Dict) -> None:
+        """Send a SETTINGS frame"""
+        if frame.get('raw_payload', False) or 'stream_id' in frame:
+            # Create a raw SETTINGS frame for non-conformant cases
+            settings_payload = b''
+            for setting, value in frame.get('settings', {}).items():
+                setting_id = getattr(h2.settings.SettingCodes, setting)
+                settings_payload += setting_id.to_bytes(2, byteorder='big')
+                settings_payload += value.to_bytes(4, byteorder='big')
+            
+            # Add extra bytes if specified
+            if frame.get('extra_bytes', 0) > 0:
+                settings_payload += b'\x00' * frame.get('extra_bytes', 0)
+            
+            # Frame header: length (3 bytes), type (1 byte), flags (1 byte), stream id (4 bytes)
+            frame_header = (
+                len(settings_payload).to_bytes(3, byteorder='big') +  # Length
+                b'\x04' +  # Type (4 for SETTINGS)
+                (b'\x01' if 'ACK' in frame.get('flags', []) else b'\x00') +  # Flags
+                frame.get('stream_id', 0).to_bytes(4, byteorder='big') if frame.get('stream_id', False) else b'\x00\x00\x00\x00'
+            )
+            
+            self.sock.sendall(frame_header + settings_payload)
+        else:
+            # Normal SETTINGS frame
+            self.conn.update_settings(frame.get('settings', {}))
+            if 'ACK' in frame.get('flags', []):
+                self.conn.acknowledge_settings()
+
+    def _send_priority_frame(self, frame: Dict) -> None:
+        """Send a PRIORITY frame"""
+        stream_id = frame.get('stream_id')
+        depends_on = frame.get('depends_on', 0)
+        weight = frame.get('weight', 16)
+        exclusive = frame.get('exclusive', False)
+        
+        if 'payload_length' in frame:
+            # Create a raw PRIORITY frame with incorrect length
+            frame_data = (
+                depends_on.to_bytes(4, byteorder='big') +  # 4 bytes for depends_on
+                weight.to_bytes(1, byteorder='big') +      # 1 byte for weight
+                b'\x00'  # Extra byte to make length incorrect
+            )
+            
+            frame_header = (
+                len(frame_data).to_bytes(3, byteorder='big') +  # Length
+                b'\x02' +  # Type (2 for PRIORITY)
+                b'\x00' +  # Flags
+                stream_id.to_bytes(4, byteorder='big')  # Stream ID
+            )
+            
+            self.sock.sendall(frame_header + frame_data)
+        else:
+            self.conn.prioritize(
+                stream_id=stream_id,
+                depends_on=depends_on,
+                weight=weight,
+                exclusive=exclusive
+            )
+
+    def _send_headers_frame(self, frame: Dict) -> None:
+        """Send a HEADERS frame"""
+        stream_id = frame.get('stream_id', self.conn.get_next_available_stream_id())
+        end_stream = 'END_STREAM' in frame.get('flags', [])
+        headers = self._format_headers(frame.get('headers'))
+        self.conn.send_headers(
+            stream_id=stream_id,
+            headers=headers,
+            end_stream=end_stream
+        )
+
+    def _send_data_frame(self, frame: Dict) -> None:
+        """Send a DATA frame"""
+        stream_id = frame.get('stream_id', 1)
+        end_stream = 'END_STREAM' in frame.get('flags', [])
+        payload_size = frame.get('payload_size', 0)
+        data = b'X' * payload_size
+        
+        self.conn.send_data(
+            stream_id=stream_id,
+            data=data,
+            end_stream=end_stream
+        )
+
+    def _send_rst_stream_frame(self, frame: Dict) -> None:
+        """Send a RST_STREAM frame"""
+        stream_id = frame.get('stream_id')
+        error_code = frame.get('error_code', 'CANCEL')
+        
+        if 'payload_length' in frame:
+            # Create a raw RST_STREAM frame with incorrect length
+            frame_data = (
+                getattr(h2.errors.ErrorCodes, error_code).to_bytes(4, byteorder='big') +  # 4 bytes for error code
+                b'\x00'  # Extra byte to make length incorrect
+            )
+            
+            frame_header = (
+                len(frame_data).to_bytes(3, byteorder='big') +  # Length
+                b'\x03' +  # Type (3 for RST_STREAM)
+                b'\x00' +  # Flags
+                stream_id.to_bytes(4, byteorder='big')  # Stream ID
+            )
+            
+            self.sock.sendall(frame_header + frame_data)
+        else:
+            self.conn.reset_stream(
+                stream_id=stream_id, 
+                error_code=getattr(h2.errors.ErrorCodes, error_code)
+            )
 
     def receive_response(self) -> str:
         """Handle server response"""

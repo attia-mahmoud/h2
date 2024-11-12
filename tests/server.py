@@ -19,6 +19,8 @@ class FrameType(Enum):
     SETTINGS = "SETTINGS"
     DATA = "DATA"
     WINDOW_UPDATE = "WINDOW_UPDATE"
+    RST_STREAM = "RST_STREAM"
+    PUSH_PROMISE = "PUSH_PROMISE"
 
 @dataclass
 class ServerResponse:
@@ -66,7 +68,7 @@ class HTTP2Connection:
         try:
             self._initialize_connection()
             self._handle_client_preface()
-            self._send_server_frames()
+            self._send_settings_frames()
             self._process_requests()
         except Exception as e:
             self.logger.error(f"Error handling client: {e}", exc_info=True)
@@ -86,7 +88,7 @@ class HTTP2Connection:
             raise ValueError(f"Invalid client preface: {preface}")
         self.logger.info("Valid client preface received")
 
-    def _send_server_frames(self) -> None:
+    def _send_settings_frames(self) -> None:
         """Send frames specified in test case"""
         for frame in self.test_case['server_frames']:
             frame_type = FrameType(frame['type'].upper())
@@ -156,11 +158,12 @@ class HTTP2Connection:
                 )
                 
                 # Send response data
-                self.conn.send_data(
-                    stream_id=stream_id,
-                    data=response.body.encode('utf-8'),
-                    end_stream=True
-                )
+                if body:
+                    self.conn.send_data(
+                        stream_id=stream_id,
+                        data=response.body.encode('utf-8'),
+                        end_stream=True
+                    )
                 
                 self.client_socket.sendall(self.conn.data_to_send())
 
@@ -171,6 +174,18 @@ class HTTP2Connection:
                 error_code = frame.get('error_code', 'CANCEL')
                 self.conn.reset_stream(stream_id, error_code=getattr(h2.errors.ErrorCodes, error_code))
             
+            elif frame_type == FrameType.PUSH_PROMISE:
+                stream_id = frame.get('stream_id', 1)
+                promised_stream_id = frame.get('promised_stream_id', 2)
+                headers = self._format_headers(frame.get('headers', {}))
+                
+                self.conn.push_stream(
+                    stream_id=stream_id,
+                    promised_stream_id=promised_stream_id,
+                    request_headers=headers
+                )
+            
+            self.client_socket.sendall(self.conn.data_to_send())
 
     def close(self) -> None:
         """Close the connection"""

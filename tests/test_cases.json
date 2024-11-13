@@ -1,0 +1,1449 @@
+{
+    "metadata": {
+      "version": "1.0",
+      "spec_reference": "RFC 9113"
+    },
+    "test_suites": [
+      {
+        "name": "Starting HTTP/2 for HTTPS URIs",
+        "section": "3.2",
+        "cases": [
+          {
+            "id": 1,
+            "description": "Client must not send h2c protocol identifier",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "enable_push": false,
+              "initial_window_size": 65535,
+              "max_frame_size": 16384
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
+                  },
+                  "regular_headers": {
+                    "upgrade": "h2c",
+                    "http2-settings": "AAMAAABkAAQAAP__",
+                    "connection": "Upgrade, HTTP2-Settings"
+                  }
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain",
+                    "content-length": "13"
+                  }
+                },
+                "body": "Hello, World!"
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "description": "Client and server must send connection preface after TLS",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": true
+            },
+            "preface": {
+              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
+              "verify_server_preface": true
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "https",
+                    "path": "/",
+                    "authority": "localhost"
+                  },
+                  "regular_headers": {
+                    "user-agent": "test-client"
+                  }
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain",
+                    "content-length": "13"
+                  }
+                },
+                "body": "Hello, World!"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Starting HTTP/2 with Prior Knowledge",
+        "section": "3.3",
+        "cases": [
+          {
+            "id": 3,
+            "description": "Client establishes TCP connection and sends connection preface without TLS",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "preface": {
+              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
+              "verify_server_preface": true
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
+                  },
+                  "regular_headers": {
+                    "user-agent": "test-client"
+                  }
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain",
+                    "content-length": "13"
+                  }
+                },
+                "body": "Hello, World!"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "HTTP/2 Connection Preface",
+        "section": "3.4",
+        "cases": [
+          {
+            "id": 4,
+            "description": "Connection preface must be followed by a SETTINGS frame",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "preface": {
+              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
+              "verify_server_preface": true
+            },
+            "client_frames": [
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
+                  },
+                  "regular_headers": {
+                    "user-agent": "test-client"
+                  }
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain",
+                    "content-length": "13"
+                  }
+                },
+                "body": "Hello, World!"
+              }
+            ]
+          },
+          {
+            "id": 5,
+            "description": "SETTINGS frame MUST be the first frame the server sends in the HTTP/2 connection.",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "preface": {
+              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
+              "verify_server_preface": true
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
+                  },
+                  "regular_headers": {
+                    "user-agent": "test-client"
+                  }
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain",
+                    "content-length": "13"
+                  }
+                },
+                "body": "Hello, World!"
+              },
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Frame Format",
+        "section": "4.1",
+        "cases": [
+          {
+            "id": 8,
+            "description": "Values greater than 16,384 MUST NOT be sent unless receiver has set larger SETTINGS_MAX_FRAME_SIZE",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "preface": {
+              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
+              "verify_server_preface": true
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_HEADERS"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
+                  },
+                  "regular_headers": {
+                    "user-agent": "test-8"
+                  }
+                }
+              },
+              {
+                "type": "DATA",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "payload_size": 17000
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain",
+                    "content-length": "13"
+                  }
+                },
+                "body": "Hello, World!"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Frame Size",
+        "section": "4.2",
+        "cases": [
+          {
+            "id": 13,
+            "description": "An endpoint MUST send an error code of FRAME_SIZE_ERROR if a frame exceeds the size defined in SETTINGS_MAX_FRAME_SIZE.",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "preface": {
+              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
+              "verify_server_preface": true
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_HEADERS"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
+                  },
+                  "regular_headers": {
+                    "user-agent": "test-8"
+                  }
+                }
+              },
+              {
+                "type": "DATA",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "payload_size": 17000
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain",
+                    "content-length": "13"
+                  }
+                },
+                "body": "Hello, World!"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Stream Identifiers",
+        "section": "5.1.1",
+        "cases": [
+          {
+            "id": 29,
+            "description": "Streams initiated by a client MUST use odd-numbered stream identifiers.",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "preface": {
+              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
+              "verify_server_preface": true
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_HEADERS"
+                ],
+                "stream_id": 2,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
+                  },
+                  "regular_headers": {
+                    "user-agent": "test-8"
+                  }
+                }
+              },
+              {
+                "type": "DATA",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 2,
+                "payload_size": 1000
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 4,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain",
+                    "content-length": "13"
+                  }
+                },
+                "body": "Hello, World!"
+              }
+            ]
+          },
+          {
+            "id": 30,
+            "description": "Streams initiated by a server MUST use even-numbered stream identifiers.",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "preface": {
+              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
+              "verify_server_preface": true
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_HEADERS"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
+                  },
+                  "regular_headers": {
+                    "user-agent": "test-8"
+                  }
+                }
+              },
+              {
+                "type": "DATA",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "payload_size": 1000
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 3,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain",
+                    "content-length": "13"
+                  }
+                },
+                "body": "Hello, World!"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Stream Error Handling",
+        "section": "5.4.2",
+        "cases": [
+          {
+            "id": 40,
+            "description": "An endpoint MUST NOT send a RST_STREAM in response to a RST_STREAM frame",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "RST_STREAM",
+                "stream_id": 1,
+                "error_code": "CANCEL"
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "RST_STREAM",
+                "stream_id": 1,
+                "error_code": "CANCEL"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "HEADERS Frame",
+        "section": "6.2",
+        "cases": [
+          {
+            "id": 55,
+            "description": "An endpoint MUST NOT send a RST_STREAM in response to a RST_STREAM frame",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 0,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
+                  }
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 4,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain",
+                    "content-length": "13"
+                  }
+                },
+                "body": "Hello, World!"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "PRIORITY Frame",
+        "section": "6.3",
+        "cases": [
+          {
+            "id": 57,
+            "description": "If a PRIORITY frame is received with a stream identifier of 0x00, the recipient MUST respond with a connection error of type PROTOCOL_ERROR",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "PRIORITY",
+                "stream_id": 0,
+                "weight": 16,
+                "depends_on": 0,
+                "exclusive": false
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 4,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain",
+                    "content-length": "13"
+                  }
+                },
+                "body": "Hello, World!"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "RST_STREAM Frame",
+        "section": "6.4",
+        "cases": [
+          {
+            "id": 59,
+            "description": "After receiving a RST_STREAM on a stream, the receiver MUST NOT send additional frames for that stream, except for PRIORITY",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "RST_STREAM",
+                "stream_id": 1,
+                "error_code": "CANCEL"
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "DATA",
+                "stream_id": 1,
+                "flags": [
+                  "END_STREAM"
+                ],
+                "payload_size": 10
+              }
+            ]
+          },
+          {
+            "id": 62,
+            "description": "If a RST_STREAM frame is received with a stream identifier of 0x00, the recipient MUST treat this as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "RST_STREAM",
+                "stream_id": 0,
+                "error_code": "CANCEL"
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 4,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain",
+                    "content-length": "13"
+                  }
+                },
+                "body": "Hello, World!"
+              }
+            ]
+          },
+          {
+            "id": 65,
+            "description": "A RST_STREAM frame with a length other than 4 octets MUST be treated as a connection error (Section 5.4.1) of type FRAME_SIZE_ERROR.",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "RST_STREAM",
+                "stream_id": 1,
+                "error_code": "CANCEL",
+                "payload_length": 5
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 4,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain",
+                    "content-length": "13"
+                  }
+                },
+                "body": "Hello, World!"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "SETTINGS Frame",
+        "section": "6.5",
+        "cases": [
+          {
+            "id": 66,
+            "description": "A SETTINGS frame MUST be sent by both endpoints at the start of a connection and MAY be sent at any other time by either endpoint over the lifetime of the connection.",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 0,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
+                  }
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 4,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain",
+                    "content-length": "13"
+                  }
+                },
+                "body": "Hello, World!"
+              }
+            ]
+          },
+          {
+            "id": 68,
+            "description": "When set, the ACK flag indicates that this frame acknowledges receipt and application of the peer's SETTINGS frame. When this bit is set, the frame payload of the SETTINGS frame MUST be empty.",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "preface": {
+              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
+              "verify_server_preface": true
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [
+                  "ACK"
+                ],
+                "settings": {
+                  "SETTINGS_MAX_CONCURRENT_STREAMS": 100
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              }
+            ]
+          },
+          {
+            "id": 70,
+            "description": "The stream identifier for a SETTINGS frame MUST be zero (0x00).",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "preface": {
+              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
+              "verify_server_preface": true
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "stream_id": 1,
+                "flags": [],
+                "settings": {
+                  "SETTINGS_MAX_CONCURRENT_STREAMS": 100
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              }
+            ]
+          },
+          {
+            "id": 73,
+            "description": "A SETTINGS frame with a length other than a multiple of 6 octets MUST be treated as a connection error (Section 5.4.1) of type FRAME_SIZE_ERROR.",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "preface": {
+              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
+              "verify_server_preface": true
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "raw_payload": true,
+                "settings": {
+                  "SETTINGS_MAX_CONCURRENT_STREAMS": 100
+                },
+                "extra_bytes": 1
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Defined Settings",
+        "section": "6.5.2",
+        "cases": [
+          {
+            "id": 74,
+            "description": "A server MUST NOT send a PUSH_PROMISE frame if it receives the SETTINGS_ENABLE_PUSH (0x02) parameter set to a value of 0. Testing proxy behavior when server violates this.",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "preface": {
+              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
+              "verify_server_preface": true
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {
+                  "SETTINGS_ENABLE_PUSH": 0
+                }
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM",
+                  "END_HEADERS"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
+                  },
+                  "regular_headers": {
+                    "accept": "text/html"
+                  }
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "PUSH_PROMISE",
+                "flags": [
+                  "END_HEADERS"
+                ],
+                "stream_id": 1,
+                "promised_stream_id": 2,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/style.css",
+                    "authority": "localhost"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 76,
+            "description": "The initial value of SETTINGS_ENABLE_PUSH is 1. Any value other than 0 or 1 MUST be treated as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "preface": {
+              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
+              "verify_server_preface": true
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {
+                  "SETTINGS_ENABLE_PUSH": 2
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              }
+            ]
+          },
+          {
+            "id": 77,
+            "description": "A server MUST NOT explicitly set this value (SETTINGS_ENABLE_PUSH) to 1. A server MAY choose to omit this setting (SETTINGS_ENABLE_PUSH) when it sends a SETTINGS frame, but if a server does include a value, it MUST be 0.",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "preface": {
+              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
+              "verify_server_preface": true
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {
+                  "SETTINGS_ENABLE_PUSH": 1
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Connection-Specific Header Fields",
+        "section": "8.2.2",
+        "cases": [
+          {
+            "id": 147,
+            "description": "Send connection-specific header field in a request that should trigger PROTOCOL_ERROR",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "preface": {
+              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
+              "verify_server_preface": true
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
+                  },
+                  "regular_headers": {
+                    "connection": "keep-alive"
+                  }
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "HTTP Fields",
+        "section": "8.2",
+        "cases": [
+          {
+            "id": 140,
+            "description": "Field names MUST be converted to lowercase when constructing an HTTP/2 message",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "preface": {
+              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
+              "verify_server_preface": true
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
+                  },
+                  "regular_headers": {
+                    "User-Agent": "python-h2"
+                  }
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              }
+            ]
+          },
+          {
+            "id": 141,
+            "description": "A field name MUST NOT contain characters in the ranges 0x00-0x20, 0x41-0x5a, or 0x7f-0xff",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "preface": {
+              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
+              "verify_server_preface": true
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
+                  },
+                  "regular_headers": {
+                    "user\u0000agent": "test"
+                  }
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "HTTP Control Data",
+        "section": "8.3",
+        "cases": [
+          {
+            "id": 157,
+            "description": "pseudo-header fields MUST appear in a field block before all regular field lines",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "preface": {
+              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
+              "verify_server_preface": true
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "authority": "localhost",
+                    "path": "/"
+                  },
+                  "regular_headers": {
+                    "user-agent": "test"
+                  }
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain",
+                    "content-length": "13"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 152,
+            "description": "Endpoints MUST NOT generate pseudo-header fields other than those defined in this document",
+            "connection_settings": {
+              "client_side": true,
+              "header_encoding": "utf-8",
+              "tls_enabled": false
+            },
+            "preface": {
+              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
+              "verify_server_preface": true
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "authority": "localhost",
+                    "path": "/"
+                  },
+                  "regular_headers": {
+                    ":user-agent": "test"
+                  }
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "GOAWAY",
+                "error_code": "PROTOCOL_ERROR"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }

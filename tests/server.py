@@ -3,7 +3,7 @@ import h2.config
 import h2.events
 import socket
 import select
-import yaml
+import json
 import ssl
 import logging
 from dataclasses import dataclass
@@ -30,20 +30,20 @@ class ServerResponse:
 
 
 class TestCaseManager:
-    def __init__(self, yaml_path: str):
-        self.yaml_path = yaml_path
-        self.test_data = self._load_yaml()
+    def __init__(self, json_path: str):
+        self.json_path = json_path
+        self.test_data = self._load_json()
         self.logger = logging.getLogger(__name__)
 
-    def _load_yaml(self) -> Dict:
-        """Load and parse YAML test configuration"""
+    def _load_json(self) -> Dict:
+        """Load and parse JSON test configuration"""
         try:
-            with open(self.yaml_path, 'r') as f:
-                return yaml.safe_load(f)
+            with open(self.json_path, 'r') as f:
+                return json.load(f)
         except FileNotFoundError:
-            raise FileNotFoundError(f"{self.yaml_path} not found")
-        except yaml.YAMLError:
-            raise ValueError(f"Invalid YAML in {self.yaml_path}")
+            raise FileNotFoundError(f"{self.json_path} not found")
+        except json.JSONDecodeError:
+            raise ValueError(f"Invalid JSON in {self.json_path}")
 
     def find_test_case(self, test_id: int) -> Tuple[Optional[Dict], Optional[Dict]]:
         """Find test case and its parent suite by ID"""
@@ -193,11 +193,11 @@ class HTTP2Connection:
         self.logger.info("Connection closed")
 
 class HTTP2Server:
-    def __init__(self, host: str = 'localhost', port: int = 7700, yaml_path: str = 'test_cases.yaml'):
+    def __init__(self, host: str = 'localhost', port: int = 7700, json_path: str = 'test_cases.json'):
         self.host = host
         self.port = port
         self.sock = None
-        self.test_manager = TestCaseManager(yaml_path)
+        self.test_manager = TestCaseManager(json_path)
         self.logger = logging.getLogger(__name__)
 
     def _setup_socket(self, test_id: int) -> None:

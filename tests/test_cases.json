@@ -11,11 +11,7 @@
           {
             "id": 1,
             "description": "Client must not send h2c protocol identifier",
-            "connection_settings": {
-              "enable_push": false,
-              "initial_window_size": 65535,
-              "max_frame_size": 16384
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1283,10 +1279,7 @@
               {
                 "id": 107,
                 "description": "Receipt of a PING frame with a length field value other than 8 MUST be treated as a connection error (Section 5.4.1) of type FRAME_SIZE_ERROR.",
-                "connection_settings": {
-  
-          },
-  
+                "connection_settings": {},
                 "client_frames": [
                   {
                     "type": "SETTINGS",
@@ -1426,32 +1419,23 @@
             ]
           },
           {
-            "name": "SETTINGS Initial Window Size Exceeds Maximum",
-            "section": "6.9.2",
-            "cases": [
+            "id": 123,
+            "description": "An endpoint MUST treat a change to SETTINGS_INITIAL_WINDOW_SIZE that causes any flow-control window to exceed the maximum size as a connection error (Section 5.4.1) of type FLOW_CONTROL_ERROR.",
+            "connection_settings": {},
+            "client_frames": [
               {
-                "id": 123,
-                "description": "An endpoint MUST treat a change to SETTINGS_INITIAL_WINDOW_SIZE that causes any flow-control window to exceed the maximum size as a connection error (Section 5.4.1) of type FLOW_CONTROL_ERROR.",
-                "connection_settings": {
-  
-          },
-  
-                "client_frames": [
-                  {
-                    "type": "SETTINGS",
-                    "flags": [],
-                    "settings": {
-                      "SETTINGS_INITIAL_WINDOW_SIZE": 2147483648
-                    }
-                  }
-                ],
-                "server_frames": [
-                  {
-                    "type": "SETTINGS",
-                    "flags": [],
-                    "settings": {}
-                  }
-                ]
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {
+                  "SETTINGS_INITIAL_WINDOW_SIZE": 2147483648
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
               }
             ]
           }
@@ -1612,8 +1596,7 @@
                     "scheme": "http",
                     "path": "/",
                     "authority": "example.com"
-                  },
-                  "regular_headers": {}
+                  }
                 }
               },
               {
@@ -1957,9 +1940,7 @@
           {
             "id": 153,
             "description": "Pseudo-header fields defined for requests MUST NOT appear in responses.",
-            "connection_settings": {
-              "tls_enabled": true
-            },
+            "connection_settings": {},
             "server_frames": [
               {
                 "type": "SETTINGS",
@@ -2149,8 +2130,7 @@
                     "scheme": "http",
                     "path": "/",
                     "authority": "user@example.com"
-                  },
-                  "regular_headers": {}
+                  }
                 }
               }
             ],
@@ -2183,8 +2163,7 @@
                     "scheme": "http",
                     "path": "",
                     "authority": "example.com"
-                  },
-                  "regular_headers": {}
+                  }
                 }
               }
             ],
@@ -2215,8 +2194,7 @@
                   "pseudo_headers": {
                     "path": "/",
                     "method": "GET"
-                  },
-                  "regular_headers": {}
+                  }
                 }
               }
             ],
@@ -2247,8 +2225,7 @@
                   "pseudo_headers": {
                     "path": "/",
                     "method": "GET"
-                  },
-                  "regular_headers": {}
+                  }
                 }
               }
             ],
@@ -2308,8 +2285,7 @@
                     "scheme": "https",
                     "path": "/resource",
                     "authority": "example.com"
-                  },
-                  "regular_headers": {}
+                  }
                 }
               }
             ]
@@ -2335,8 +2311,7 @@
                     "scheme": "https",
                     "path": "/resource",
                     "authority": "example.com"
-                  },
-                  "regular_headers": {}
+                  }
                 }
               }
             ],
@@ -2376,8 +2351,7 @@
                   "pseudo_headers": {
                     "scheme": "https",
                     "path": "/resource"
-                  },
-                  "regular_headers": {}
+                  }
                 }
               }
             ]
@@ -2412,8 +2386,7 @@
                     "scheme": "https",
                     "path": "/resource",
                     "authority": "example.com"
-                  },
-                  "regular_headers": {}
+                  }
                 }
               }
             ]
@@ -2443,8 +2416,7 @@
                     "method": "CONNECT",
                     "path": "/",
                     "authority": "example.com:443"
-                  },
-                  "regular_headers": {}
+                  }
                 }
               }
             ],

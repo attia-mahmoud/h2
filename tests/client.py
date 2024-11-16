@@ -69,8 +69,8 @@ class HTTP2Connection:
     def _apply_connection_settings(self, settings: Dict[str, Any]) -> None:
         """Apply connection settings from test case"""
         config = h2.config.H2Configuration(
-            client_side=settings.get('client_side', True),
-            header_encoding=settings.get('header_encoding', 'utf-8')
+            client_side=True,
+            header_encoding='utf-8'
         )
         self.conn = h2.connection.H2Connection(config=config)
         if 'settings' in settings:
@@ -107,6 +107,15 @@ class HTTP2Connection:
                 formatted_headers.append((name, str(value)))
         
         return formatted_headers
+
+    def _format_custom_headers(self, headers) -> List[Tuple[str, str]]:
+        """Convert YAML header format to h2 format"""
+        headers = []
+        
+        for name, value in headers.items():
+            headers.append((name, str(value)))
+        
+        return headers
 
     def send_frames(self, frames: List[Dict]) -> None:
         """Send frames according to test configuration"""
@@ -204,7 +213,12 @@ class HTTP2Connection:
         """Send a HEADERS frame"""
         stream_id = frame.get('stream_id', self.conn.get_next_available_stream_id())
         end_stream = 'END_STREAM' in frame.get('flags', [])
-        headers = self._format_headers(frame.get('headers'))
+        
+        if frame.get('headers'):
+            headers = self._format_headers(frame.get('headers'))
+        else:
+            headers = self._format_custom_headers(frame.get('custom_headers'))
+            
         self.conn.send_headers(
             stream_id=stream_id,
             headers=headers,

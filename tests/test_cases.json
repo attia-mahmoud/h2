@@ -12,8 +12,6 @@
             "id": 1,
             "description": "Client must not send h2c protocol identifier",
             "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
               "enable_push": false,
               "initial_window_size": 65535,
               "max_frame_size": 16384
@@ -74,13 +72,7 @@
             "id": 2,
             "description": "Client and server must send connection preface after TLS",
             "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
               "tls_enabled": true
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
             },
             "client_frames": [
               {
@@ -141,15 +133,7 @@
           {
             "id": 3,
             "description": "Client establishes TCP connection and sends connection preface without TLS",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -209,15 +193,7 @@
           {
             "id": 4,
             "description": "Connection preface must be followed by a SETTINGS frame",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "HEADERS",
@@ -266,15 +242,7 @@
           {
             "id": 5,
             "description": "SETTINGS frame MUST be the first frame the server sends in the HTTP/2 connection.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -334,15 +302,7 @@
           {
             "id": 8,
             "description": "Values greater than 16,384 MUST NOT be sent unless receiver has set larger SETTINGS_MAX_FRAME_SIZE",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -410,15 +370,7 @@
           {
             "id": 13,
             "description": "An endpoint MUST send an error code of FRAME_SIZE_ERROR if a frame exceeds the size defined in SETTINGS_MAX_FRAME_SIZE.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -486,15 +438,7 @@
           {
             "id": 29,
             "description": "Streams initiated by a client MUST use odd-numbered stream identifiers.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -556,15 +500,7 @@
           {
             "id": 30,
             "description": "Streams initiated by a server MUST use even-numbered stream identifiers.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -632,11 +568,7 @@
           {
             "id": 40,
             "description": "An endpoint MUST NOT send a RST_STREAM in response to a RST_STREAM frame",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -666,11 +598,7 @@
           {
             "id": 55,
             "description": "An endpoint MUST NOT send a RST_STREAM in response to a RST_STREAM frame",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -727,11 +655,7 @@
           {
             "id": 57,
             "description": "If a PRIORITY frame is received with a stream identifier of 0x00, the recipient MUST respond with a connection error of type PROTOCOL_ERROR",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -780,11 +704,7 @@
           {
             "id": 59,
             "description": "After receiving a RST_STREAM on a stream, the receiver MUST NOT send additional frames for that stream, except for PRIORITY",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -811,11 +731,7 @@
           {
             "id": 62,
             "description": "If a RST_STREAM frame is received with a stream identifier of 0x00, the recipient MUST treat this as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -856,11 +772,7 @@
           {
             "id": 65,
             "description": "A RST_STREAM frame with a length other than 4 octets MUST be treated as a connection error (Section 5.4.1) of type FRAME_SIZE_ERROR.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -908,11 +820,7 @@
           {
             "id": 66,
             "description": "A SETTINGS frame MUST be sent by both endpoints at the start of a connection and MAY be sent at any other time by either endpoint over the lifetime of the connection.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -963,15 +871,7 @@
           {
             "id": 68,
             "description": "When set, the ACK flag indicates that this frame acknowledges receipt and application of the peer's SETTINGS frame. When this bit is set, the frame payload of the SETTINGS frame MUST be empty.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -994,15 +894,7 @@
           {
             "id": 70,
             "description": "The stream identifier for a SETTINGS frame MUST be zero (0x00).",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1024,15 +916,7 @@
           {
             "id": 73,
             "description": "A SETTINGS frame with a length other than a multiple of 6 octets MUST be treated as a connection error (Section 5.4.1) of type FRAME_SIZE_ERROR.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1061,15 +945,7 @@
           {
             "id": 74,
             "description": "A server MUST NOT send a PUSH_PROMISE frame if it receives the SETTINGS_ENABLE_PUSH (0x02) parameter set to a value of 0. Testing proxy behavior when server violates this.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1125,15 +1001,7 @@
           {
             "id": 76,
             "description": "The initial value of SETTINGS_ENABLE_PUSH is 1. Any value other than 0 or 1 MUST be treated as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1159,15 +1027,7 @@
           {
             "id": 77,
             "description": "A server MUST NOT explicitly set this value (SETTINGS_ENABLE_PUSH) to 1. A server MAY choose to omit this setting (SETTINGS_ENABLE_PUSH) when it sends a SETTINGS frame, but if a server does include a value, it MUST be 0.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1188,15 +1048,7 @@
           {
             "id": 80,
             "description": "Values above the maximum flow-control window size of 2^31-1 (2147483647) MUST be treated as a connection error (Section 5.4.1) of type FLOW_CONTROL_ERROR.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1222,15 +1074,7 @@
           {
             "id": 81,
             "description": "The value advertised by an endpoint MUST be between initial value (2^14 = 16,384) and maximum allowed frame size (2^24-1 = 16,777,215 octets), inclusive. Values outside this range MUST be treated as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1256,15 +1100,7 @@
           {
             "id": 83,
             "description": "An endpoint that receives a SETTINGS frame with any unknown or unsupported identifier MUST ignore that setting.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1310,15 +1146,7 @@
           {
             "id": 93,
             "description": "If the Stream Identifier field specifies the value 0x00, a recipient MUST respond with a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1351,15 +1179,7 @@
           {
             "id": 100,
             "description": "A receiver MUST treat the receipt of a PUSH_PROMISE that promises an illegal stream identifier (Section 5.1.1) as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1392,15 +1212,7 @@
           {
             "id": 101,
             "description": "If the length of the padding is the length of the frame payload or greater, the recipient MUST treat this as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1441,15 +1253,7 @@
           {
             "id": 106,
             "description": "If a PING frame is received with a Stream Identifier field value other than 0x00, the recipient MUST respond with a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1480,14 +1284,9 @@
                 "id": 107,
                 "description": "Receipt of a PING frame with a length field value other than 8 MUST be treated as a connection error (Section 5.4.1) of type FRAME_SIZE_ERROR.",
                 "connection_settings": {
-                  "client_side": true,
-                  "header_encoding": "utf-8",
-                  "tls_enabled": false
-                },
-                "preface": {
-                  "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-                  "verify_server_preface": true
-                },
+  
+          },
+  
                 "client_frames": [
                   {
                     "type": "SETTINGS",
@@ -1521,15 +1320,7 @@
           {
             "id": 109,
             "description": "An endpoint MUST treat a GOAWAY frame with a stream identifier other than 0x00 as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1561,15 +1352,7 @@
           {
             "id": 114,
             "description": "A receiver MUST treat the receipt of a WINDOW_UPDATE frame with a flow-control window increment of 0 as a stream error (Section 5.4.2) of type PROTOCOL_ERROR; errors on the connection flow-control window MUST be treated as a connection error (Section 5.4.1).",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1594,15 +1377,7 @@
           {
             "id": 117,
             "description": "A WINDOW_UPDATE frame with a length other than 4 octets MUST be treated as a connection error (Section 5.4.1) of type FRAME_SIZE_ERROR.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1628,15 +1403,7 @@
           {
             "id": 119,
             "description": "A sender MUST NOT allow a flow-control window to exceed 2^31-1 octets. If a sender receives a WINDOW_UPDATE that causes a flow-control window to exceed this maximum, it MUST terminate either the stream or the connection, as appropriate.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1666,14 +1433,9 @@
                 "id": 123,
                 "description": "An endpoint MUST treat a change to SETTINGS_INITIAL_WINDOW_SIZE that causes any flow-control window to exceed the maximum size as a connection error (Section 5.4.1) of type FLOW_CONTROL_ERROR.",
                 "connection_settings": {
-                  "client_side": true,
-                  "header_encoding": "utf-8",
-                  "tls_enabled": false
-                },
-                "preface": {
-                  "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-                  "verify_server_preface": true
-                },
+  
+          },
+  
                 "client_frames": [
                   {
                     "type": "SETTINGS",
@@ -1702,15 +1464,7 @@
           {
             "id": 128,
             "description": "If a CONTINUATION frame is received with a Stream Identifier field of 0x00, the recipient MUST respond with a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1754,15 +1508,7 @@
           {
             "id": 129,
             "description": "A CONTINUATION frame MUST be preceded by a HEADERS, PUSH_PROMISE or CONTINUATION frame without the END_HEADERS flag set.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1800,15 +1546,7 @@
           {
             "id": 132,
             "description": "Other frames (from any stream) MUST NOT occur between the HEADERS frame and any CONTINUATION frames that might follow.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1857,15 +1595,7 @@
           {
             "id": 133,
             "description": "Trailers MUST NOT include pseudo-header fields (Section 8.3).",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1921,15 +1651,7 @@
           {
             "id": 140,
             "description": "Field names MUST be converted to lowercase when constructing an HTTP/2 message.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -1967,15 +1689,7 @@
           {
             "id": 141,
             "description": "A field name MUST NOT contain characters in the ranges 0x00-0x20, 0x41-0x5a, or 0x7f-0xff (all ranges inclusive). This specifically excludes all non-visible ASCII characters, ASCII SP (0x20), and uppercase characters ('A' to 'Z', ASCII 0x41 to 0x5a).",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -2015,15 +1729,7 @@
           {
             "id": 142,
             "description": "With the exception of pseudo-header fields (Section 8.3), which have a name that starts with a single colon, field names MUST NOT include a colon (ASCII COLON, 0x3a).",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -2059,15 +1765,7 @@
           {
             "id": 143,
             "description": "A field value MUST NOT contain the zero value (ASCII NUL, 0x00), line feed (ASCII LF, 0x0a), or carriage return (ASCII CR, 0x0d) at any position.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -2106,15 +1804,7 @@
           {
             "id": 144,
             "description": "A field value MUST NOT start or end with an ASCII whitespace character (ASCII SP or HTAB, 0x20 or 0x09).",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -2151,15 +1841,7 @@
           {
             "id": 147,
             "description": "An endpoint MUST NOT generate an HTTP/2 message containing connection-specific header fields.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -2196,15 +1878,7 @@
           {
             "id": 148,
             "description": "The only exception to this is the TE header field, which MAY be present in an HTTP/2 request; when it is, it MUST NOT contain any value other than \"trailers\".",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -2246,15 +1920,7 @@
           {
             "id": 152,
             "description": "Pseudo-header fields are not HTTP header fields. Endpoints MUST NOT generate pseudo-header fields other than those defined in this document.",
-            "connection_settings": {
-              "client_side": true,
-              "header_encoding": "utf-8",
-              "tls_enabled": false
-            },
-            "preface": {
-              "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-              "verify_server_preface": true
-            },
+            "connection_settings": {},
             "client_frames": [
               {
                 "type": "SETTINGS",
@@ -2287,134 +1953,508 @@
                 "settings": {}
               }
             ]
-          }
-        ]
-      },
-      {
-        "id": 153,
-        "description": "Pseudo-header fields defined for requests MUST NOT appear in responses.",
-        "connection_settings": {
-          "client_side": true,
-          "header_encoding": "utf-8",
-          "tls_enabled": true
-        },
-        "preface": {
-          "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-          "verify_server_preface": true
-        },
-        "server_frames": [
-          {
-            "type": "SETTINGS",
-            "flags": [],
-            "settings": {}
           },
           {
-            "type": "HEADERS",
-            "stream_id": 1,
-            "flags": ["END_HEADERS", "END_STREAM"],
-            "raw_payload": true,
-            "headers": {
-              "pseudo_headers": {
-                "status": "200",
-                "method": "GET"
+            "id": 153,
+            "description": "Pseudo-header fields defined for requests MUST NOT appear in responses.",
+            "connection_settings": {
+              "tls_enabled": true
+            },
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
               },
-              "regular_headers": {
-                "server": "test-server"
+              {
+                "type": "HEADERS",
+                "stream_id": 1,
+                "flags": ["END_HEADERS", "END_STREAM"],
+                "raw_payload": true,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200",
+                    "method": "GET"
+                  },
+                  "regular_headers": {
+                    "server": "test-server"
+                  }
+                }
               }
-            }
-          }
-        ],
-        "client_frames": [
-          {
-            "type": "SETTINGS",
-            "flags": [],
-            "settings": {}
-          }
-        ]
-      },
-      {
-        "id": 154,
-        "description": "Pseudo-header fields defined for responses MUST NOT appear in requests.",
-        "connection_settings": {
-          "client_side": true,
-          "header_encoding": "utf-8",
-          "tls_enabled": false
-        },
-        "preface": {
-          "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-          "verify_server_preface": true
-        },
-        "client_frames": [
-          {
-            "type": "SETTINGS",
-            "flags": [],
-            "settings": {}
+            ],
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              }
+            ]
           },
           {
-            "type": "HEADERS",
-            "stream_id": 1,
-            "flags": ["END_HEADERS", "END_STREAM"],
-            "raw_payload": true,
-            "headers": {
-              "pseudo_headers": {
-                "method": "GET",
-                "scheme": "http",
-                "path": "/",
-                "authority": "example.com",
-                "status": "200"
+            "id": 154,
+            "description": "Pseudo-header fields defined for responses MUST NOT appear in requests.",
+            "connection_settings": {},
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
               },
-              "regular_headers": {
-                "user-agent": "test-client"
+              {
+                "type": "HEADERS",
+                "stream_id": 1,
+                "flags": ["END_HEADERS", "END_STREAM"],
+                "raw_payload": true,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "example.com",
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "user-agent": "test-client"
+                  }
+                }
               }
-            }
-          }
-        ],
-        "server_frames": [
-          {
-            "type": "SETTINGS",
-            "flags": [],
-            "settings": {}
-          }
-        ]
-      },
-      {
-        "id": 157,
-        "description": "All pseudo-header fields MUST appear in a field block before all regular field lines. Any request or response that contains a pseudo-header field that appears in a field block after a regular field line MUST be treated as malformed (Section 8.1.1).",
-        "connection_settings": {
-          "client_side": true,
-          "header_encoding": "utf-8",
-          "tls_enabled": false
-        },
-        "preface": {
-          "client_preface": "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
-          "verify_server_preface": true
-        },
-        "client_frames": [
-          {
-            "type": "SETTINGS",
-            "flags": [],
-            "settings": {}
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              }
+            ]
           },
           {
-            "type": "HEADERS",
-            "stream_id": 1,
-            "flags": ["END_HEADERS", "END_STREAM"],
-            "raw_payload": true,
-            "ordered_headers": [
-              {":method": "GET"},
-              {":scheme": "http"},
-              {"user-agent": "test-client"},
-              {"accept": "*/*"},
-              {":path": "/"},
-              {":authority": "example.com"}
+            "id": 157,
+            "description": "All pseudo-header fields MUST appear in a field block before all regular field lines. Any request or response that contains a pseudo-header field that appears in a field block after a regular field line MUST be treated as malformed (Section 8.1.1).",
+            "connection_settings": {},
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "stream_id": 1,
+                "flags": ["END_HEADERS", "END_STREAM"],
+                "raw_payload": true,
+                "custom_headers": [
+                  {":method": "GET"},
+                  {":scheme": "http"},
+                  {"user-agent": "test-client"},
+                  {"accept": "*/*"},
+                  {":path": "/"},
+                  {":authority": "example.com"}
+                ]
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              }
+            ]
+          },
+          {
+            "id": 158,
+            "description": "The same pseudo-header field name MUST NOT appear more than once in a field block. A field block for an HTTP request or response that contains a repeated pseudo-header field name MUST be treated as malformed (Section 8.1.1).",
+            "connection_settings": {},
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "stream_id": 1,
+                "flags": ["END_HEADERS", "END_STREAM"],
+                "raw_payload": true,
+                "custom_headers": [
+                  {":method": "GET"},
+                  {":scheme": "http"},
+                  {":path": "/"},
+                  {":path": "/index.html"},
+                  {":authority": "example.com"}
+                ]
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              }
+            ]
+          },
+          {
+            "id": 161,
+            "description": "Clients MUST NOT generate a request with a Host header field that differs from the \":authority\" pseudo-header field.",
+            "connection_settings": {},
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "stream_id": 1,
+                "flags": ["END_HEADERS", "END_STREAM"],
+                "raw_payload": true,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "example.com"
+                  },
+                  "regular_headers": {
+                    "host": "nopasaran.com"
+                  }
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              }
+            ]
+          },
+          {
+            "id": 165,
+            "description": "':authority' MUST NOT include the deprecated userinfo subcomponent for \"http\" or \"https\" schemed URIs.",
+            "connection_settings": {},
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "stream_id": 1,
+                "flags": ["END_HEADERS", "END_STREAM"],
+                "raw_payload": true,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "user@example.com"
+                  },
+                  "regular_headers": {}
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              }
+            ]
+          },
+          {
+            "id": 167,
+            "description": "This pseudo-header field MUST NOT be empty for \"http\" or \"https\" URIs; \"http\" or \"https\" URIs that do not contain a path component MUST include a value of '/'. The exceptions to this rule are: an OPTIONS request for an \"http\" or \"https\" URI that does not include a path component; these MUST include a \":path\" pseudo-header field with a value of '*'.",
+            "connection_settings": {},
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "stream_id": 1,
+                "flags": ["END_HEADERS", "END_STREAM"],
+                "raw_payload": true,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "",
+                    "authority": "example.com"
+                  },
+                  "regular_headers": {}
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              }
+            ]
+          },
+          {
+            "id": 168,
+            "description": "All HTTP/2 requests MUST include exactly one valid value for the \":method\", \":scheme\", and \":path\" pseudo-header fields, unless they are CONNECT requests (Section 8.5). An HTTP request that omits mandatory pseudo-header fields is malformed (Section 8.1.1).",
+            "connection_settings": {},
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "stream_id": 1,
+                "flags": ["END_HEADERS", "END_STREAM"],
+                "raw_payload": true,
+                "headers": {
+                  "pseudo_headers": {
+                    "path": "/",
+                    "method": "GET"
+                  },
+                  "regular_headers": {}
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              }
+            ]
+          },
+          {
+            "id": 169,
+            "description": "For HTTP/2 responses, a single \":status\" pseudo-header field is defined that carries the HTTP status code field. This pseudo-header field MUST be included in all responses, including interim responses; otherwise, the response is malformed.",
+            "connection_settings": {},
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "stream_id": 1,
+                "flags": ["END_HEADERS", "END_STREAM"],
+                "raw_payload": true,
+                "headers": {
+                  "pseudo_headers": {
+                    "path": "/",
+                    "method": "GET"
+                  },
+                  "regular_headers": {}
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "stream_id": 1,
+                "flags": ["END_HEADERS", "END_STREAM"],
+                "raw_payload": true,
+                "headers": {
+                  "pseudo_headers": {},
+                  "regular_headers": {
+                    "content-type": "text/plain"
+                  }
+                }
+              }
             ]
           }
-        ],
-        "server_frames": [
+        ]
+      },
+      {
+        "name": "Server Push",
+        "section": "8.4",
+        "cases": [
           {
-            "type": "SETTINGS",
-            "flags": [],
-            "settings": {}
+            "id": 171,
+            "description": "Promised requests cannot include any content or a trailer section. Clients that receive a promised request that is not cacheable, that is not known to be safe, or that indicates the presence of request content MUST reset the promised stream with a stream error (Section 5.4.2) of type PROTOCOL_ERROR.",
+            "connection_settings": {},
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {
+                  "SETTINGS_ENABLE_PUSH": 1
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "PUSH_PROMISE",
+                "stream_id": 1,
+                "promised_stream_id": 2,
+                "flags": ["END_HEADERS"],
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "POST",
+                    "scheme": "https",
+                    "path": "/resource",
+                    "authority": "example.com"
+                  },
+                  "regular_headers": {}
+                }
+              }
+            ]
+          },
+          {
+            "id": 175,
+            "description": "A client cannot push. Thus, servers MUST treat the receipt of a PUSH_PROMISE frame as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
+            "connection_settings": {},
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "PUSH_PROMISE",
+                "stream_id": 1,
+                "promised_stream_id": 2,
+                "flags": ["END_HEADERS"],
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "https",
+                    "path": "/resource",
+                    "authority": "example.com"
+                  },
+                  "regular_headers": {}
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              }
+            ]
+          },
+          {
+            "id": 176,
+            "description": "The header fields in PUSH_PROMISE and any subsequent CONTINUATION frames MUST be a valid and complete set of request header fields (Section 8.3.1).",
+            "connection_settings": {},
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {
+                  "SETTINGS_ENABLE_PUSH": 1
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "PUSH_PROMISE",
+                "stream_id": 1,
+                "promised_stream_id": 2,
+                "flags": ["END_HEADERS"],
+                "headers": {
+                  "pseudo_headers": {
+                    "scheme": "https",
+                    "path": "/resource"
+                  },
+                  "regular_headers": {}
+                }
+              }
+            ]
+          },
+          {
+            "id": 177,
+            "description": "The server MUST include a method in the \":method\" pseudo-header field that is safe and cacheable.",
+            "connection_settings": {},
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {
+                  "SETTINGS_ENABLE_PUSH": 1
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "PUSH_PROMISE",
+                "stream_id": 1,
+                "promised_stream_id": 2,
+                "flags": ["END_HEADERS"],
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "DELETE",
+                    "scheme": "https",
+                    "path": "/resource",
+                    "authority": "example.com"
+                  },
+                  "regular_headers": {}
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "The CONNECT Method",
+        "section": "8.5",
+        "cases": [
+          {
+            "id": 182,
+            "description": "The \":scheme\" and \":path\" pseudo-header fields MUST be omitted.",
+            "connection_settings": {},
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "stream_id": 1,
+                "flags": ["END_HEADERS", "END_STREAM"],
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "CONNECT",
+                    "path": "/",
+                    "authority": "example.com:443"
+                  },
+                  "regular_headers": {}
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              }
+            ]
           }
         ]
       }

@@ -21,6 +21,8 @@ class FrameType(Enum):
     WINDOW_UPDATE = "WINDOW_UPDATE"
     RST_STREAM = "RST_STREAM"
     PUSH_PROMISE = "PUSH_PROMISE"
+    PING = "PING"
+    GOAWAY = "GOAWAY"
 
 @dataclass
 class ServerResponse:
@@ -68,8 +70,7 @@ class HTTP2Connection:
         try:
             self._initialize_connection()
             self._handle_client_preface()
-            self._send_settings_frames()
-            self._process_requests()
+            self._send_server_frames()
         except Exception as e:
             self.logger.error(f"Error handling client: {e}", exc_info=True)
         finally:
@@ -88,104 +89,264 @@ class HTTP2Connection:
             raise ValueError(f"Invalid client preface: {preface}")
         self.logger.info("Valid client preface received")
 
-    def _send_settings_frames(self) -> None:
+    def _send_server_frames(self) -> None:
         """Send frames specified in test case"""
         for frame in self.test_case['server_frames']:
             frame_type = FrameType(frame['type'].upper())
             
             if frame_type == FrameType.SETTINGS:
-                self.conn.update_settings(frame.get('settings', {}))
-            
-            self.client_socket.sendall(self.conn.data_to_send())
-
-    def _format_headers(self, headers: Dict) -> List[Tuple[str, str]]:
-        """Format headers from frame configuration"""
-        formatted_headers = []
-        
-        if 'pseudo_headers' in headers:
-            for name, value in headers['pseudo_headers'].items():
-                formatted_headers.append((f":{name}", str(value)))
-        
-        if 'regular_headers' in headers:
-            for name, value in headers['regular_headers'].items():
-                formatted_headers.append((name, str(value)))
-        
-        return formatted_headers
-
-    def _process_requests(self) -> None:
-        """Process incoming requests"""
-        self.logger.info("Waiting for request...")
-        while True:
-            data = self.client_socket.recv(65535)
-            if not data:
-                self.logger.info("Connection closed by client")
-                break
-            
-            events = self.conn.receive_data(data)
-            self.logger.info(f"Received events: {events}")
-            
-            for event in events:
-                if isinstance(event, h2.events.RequestReceived):
-                    self.logger.info("Request received, sending response...")
-                    self._handle_request(event)
-                elif isinstance(event, h2.events.DataReceived):
-                    self.logger.info(f"Received DATA frame with payload size: {len(event.data)} bytes")
-            
-            outbound_data = self.conn.data_to_send()
-            if outbound_data:
-                self.client_socket.sendall(outbound_data)
-
-    def _handle_request(self, event: h2.events.RequestReceived) -> None:
-        """Handle incoming request"""
-        self.logger.info(f"Request headers: {event.headers}")
-        
-        # Send response
-        for frame in self.test_case['server_frames']:
-            frame_type = FrameType(frame['type'].upper())
-            if frame_type == FrameType.HEADERS:
-                stream_id = frame.get('stream_id', 1)
-                end_stream = 'END_STREAM' in frame.get('flags', [])
-                headers = self._format_headers(frame.get('headers', {}))
-                body = frame.get('body', '')
-
-                response = ServerResponse(headers=headers, body=body)
-            
-                # Send response headers
-                self.conn.send_headers(
-                    stream_id=stream_id,
-                    headers=response.headers,
-                    end_stream=False
-                )
-                
-                # Send response data
-                if body:
-                    self.conn.send_data(
-                        stream_id=stream_id,
-                        data=response.body.encode('utf-8'),
-                        end_stream=True
-                    )
-                
-                self.client_socket.sendall(self.conn.data_to_send())
-
-                self.logger.info("Response sent")
-
-            elif frame_type == FrameType.RST_STREAM:
-                stream_id = frame.get('stream_id')
-                error_code = frame.get('error_code', 'CANCEL')
-                self.conn.reset_stream(stream_id, error_code=getattr(h2.errors.ErrorCodes, error_code))
-            
+                self._send_settings_frame(frame)
+            elif frame_type == FrameType.HEADERS:
+                self._send_headers_frame(frame)
+            elif frame_type == FrameType.DATA:
+                self._send_data_frame(frame)
             elif frame_type == FrameType.PUSH_PROMISE:
-                stream_id = frame.get('stream_id', 1)
-                promised_stream_id = frame.get('promised_stream_id', 2)
-                headers = self._format_headers(frame.get('headers', {}))
-                
-                self.conn.push_stream(
-                    stream_id=stream_id,
-                    promised_stream_id=promised_stream_id,
-                    request_headers=headers
-                )
+                self._send_push_promise_frame(frame)
+            elif frame_type == FrameType.RST_STREAM:
+                self._send_rst_stream_frame(frame)
+            elif frame_type == FrameType.GOAWAY:
+                self._send_goaway_frame(frame)
+            elif frame_type == FrameType.PING:
+                self._send_ping_frame(frame)
+
+    def _send_settings_frame(self, frame: Dict) -> None:
+        """Send a SETTINGS frame"""
+        if frame.get('raw_payload', False) or 'stream_id' in frame:
+            settings_payload = b''
+            for setting, value in frame.get('settings', {}).items():
+                setting_id = getattr(h2.settings.SettingCodes, setting)
+                settings_payload += setting_id.to_bytes(2, byteorder='big')
+                settings_payload += value.to_bytes(4, byteorder='big')
             
+            frame_header = (
+                len(settings_payload).to_bytes(3, byteorder='big') +  # Length
+                b'\x04' +  # Type (4 for SETTINGS)
+                (b'\x01' if 'ACK' in frame.get('flags', []) else b'\x00') +  # Flags
+                frame.get('stream_id', 0).to_bytes(4, byteorder='big')
+            )
+            
+            self.client_socket.sendall(frame_header + settings_payload)
+        else:
+            self.conn.update_settings(frame.get('settings', {}))
+            if 'ACK' in frame.get('flags', []):
+                self.conn.acknowledge_settings()
             self.client_socket.sendall(self.conn.data_to_send())
+
+    def _send_headers_frame(self, frame: Dict) -> None:
+        """Send a HEADERS frame"""
+        if frame.get('raw_payload', False):
+            headers = self._format_headers(frame.get('headers', {}))
+            header_block = self.conn.encoder.encode(headers)
+            
+            frame_header = (
+                len(header_block).to_bytes(3, byteorder='big') +  # Length
+                b'\x01' +  # Type (1 for HEADERS)
+                self._encode_flags(frame.get('flags', [])) +  # Flags
+                frame.get('stream_id', 1).to_bytes(4, byteorder='big')  # Stream ID
+            )
+            
+            self.client_socket.sendall(frame_header + header_block)
+        else:
+            stream_id = frame.get('stream_id', 1)
+            headers = self._format_headers(frame.get('headers', {}))
+            end_stream = 'END_STREAM' in frame.get('flags', [])
+            
+            self.conn.send_headers(
+                stream_id=stream_id,
+                headers=headers,
+                end_stream=end_stream
+            )
+            self.client_socket.sendall(self.conn.data_to_send())
+
+    def _send_data_frame(self, frame: Dict) -> None:
+        """Send a DATA frame"""
+        if frame.get('raw_payload', False):
+            data = frame.get('data', '').encode('utf-8')
+            
+            frame_header = (
+                len(data).to_bytes(3, byteorder='big') +  # Length
+                b'\x00' +  # Type (0 for DATA)
+                self._encode_flags(frame.get('flags', [])) +  # Flags
+                frame.get('stream_id', 1).to_bytes(4, byteorder='big')  # Stream ID
+            )
+            
+            self.client_socket.sendall(frame_header + data)
+        else:
+            stream_id = frame.get('stream_id', 1)
+            data = frame.get('data', '').encode('utf-8')
+            end_stream = 'END_STREAM' in frame.get('flags', [])
+            
+            self.conn.send_data(
+                stream_id=stream_id,
+                data=data,
+                end_stream=end_stream
+            )
+            self.client_socket.sendall(self.conn.data_to_send())
+
+    def _send_push_promise_frame(self, frame: Dict) -> None:
+        """Send a PUSH_PROMISE frame"""
+        if frame.get('raw_payload', False) or frame.get('stream_id', 0) == 0:
+            headers = self._format_headers(frame.get('headers', {}))
+            header_block = self.conn.encoder.encode(headers)
+            
+            # Create the frame payload
+            frame_payload = frame.get('promised_stream_id', 2).to_bytes(4, byteorder='big')
+            
+            # Add padding length byte if PADDED flag is set
+            if 'PADDED' in frame.get('flags', []):
+                padding_length = frame.get('padding_length', 0)
+                frame_payload = bytes([padding_length]) + frame_payload
+            
+            # Add header block
+            frame_payload += header_block
+            
+            # Add padding if PADDED flag is set
+            if 'PADDED' in frame.get('flags', []):
+                frame_payload += b'\x00' * frame.get('padding_length', 0)
+            
+            frame_header = (
+                len(frame_payload).to_bytes(3, byteorder='big') +  # Length
+                b'\x05' +  # Type (5 for PUSH_PROMISE)
+                self._encode_flags(frame.get('flags', [])) +  # Flags
+                frame.get('stream_id', 0).to_bytes(4, byteorder='big')  # Stream ID
+            )
+            
+            self.client_socket.sendall(frame_header + frame_payload)
+        else:
+            stream_id = frame.get('stream_id', 1)
+            promised_stream_id = frame.get('promised_stream_id', 2)
+            headers = self._format_headers(frame.get('headers', {}))
+            
+            self.conn.push_stream(
+                stream_id=stream_id,
+                promised_stream_id=promised_stream_id,
+                request_headers=headers
+            )
+            self.client_socket.sendall(self.conn.data_to_send())
+
+    def _send_rst_stream_frame(self, frame: Dict) -> None:
+        """Send a RST_STREAM frame"""
+        if frame.get('raw_payload', False):
+            error_code = getattr(h2.errors.ErrorCodes, frame.get('error_code', 'PROTOCOL_ERROR'))
+            payload = error_code.to_bytes(4, byteorder='big')
+            
+            frame_header = (
+                len(payload).to_bytes(3, byteorder='big') +  # Length
+                b'\x03' +  # Type (3 for RST_STREAM)
+                b'\x00' +  # Flags (no flags for RST_STREAM)
+                frame.get('stream_id', 1).to_bytes(4, byteorder='big')  # Stream ID
+            )
+            
+            self.client_socket.sendall(frame_header + payload)
+        else:
+            stream_id = frame.get('stream_id', 1)
+            error_code = frame.get('error_code', 'PROTOCOL_ERROR')
+            
+            self.conn.reset_stream(
+                stream_id=stream_id,
+                error_code=getattr(h2.errors.ErrorCodes, error_code)
+            )
+            self.client_socket.sendall(self.conn.data_to_send())
+
+    def _send_goaway_frame(self, frame: Dict) -> None:
+        """Send a GOAWAY frame"""
+        if frame.get('raw_payload', False) or 'stream_id' in frame:
+            # Convert error code to int if string provided
+            if isinstance(frame.get('error_code'), str):
+                error_code = getattr(h2.errors.ErrorCodes, frame['error_code'])
+            else:
+                error_code = frame.get('error_code', h2.errors.ErrorCodes.NO_ERROR)
+            
+            # Create payload: last_stream_id (4 bytes) + error_code (4 bytes)
+            payload = (
+                frame.get('last_stream_id', 0).to_bytes(4, byteorder='big') +
+                error_code.to_bytes(4, byteorder='big')
+            )
+            
+            # Add debug data if provided
+            if 'debug_data' in frame:
+                if isinstance(frame['debug_data'], str):
+                    payload += frame['debug_data'].encode('utf-8')
+                else:
+                    payload += frame['debug_data']
+            
+            frame_header = (
+                len(payload).to_bytes(3, byteorder='big') +  # Length
+                b'\x07' +  # Type (7 for GOAWAY)
+                self._encode_flags(frame.get('flags', [])) +  # Flags
+                frame.get('stream_id', 0).to_bytes(4, byteorder='big')  # Stream ID (normally 0)
+            )
+            
+            self.client_socket.sendall(frame_header + payload)
+        else:
+            # Use h2 library's GOAWAY support
+            error_code = frame.get('error_code', 'NO_ERROR')
+            if isinstance(error_code, str):
+                error_code = getattr(h2.errors.ErrorCodes, error_code)
+                
+            last_stream_id = frame.get('last_stream_id', 0)
+            debug_data = frame.get('debug_data', b'').encode('utf-8') if isinstance(frame.get('debug_data'), str) else frame.get('debug_data', b'')
+            
+            self.conn.close_connection(
+                error_code=error_code,
+                last_stream_id=last_stream_id,
+                additional_data=debug_data
+            )
+            self.client_socket.sendall(self.conn.data_to_send())
+
+    def _send_ping_frame(self, frame: Dict) -> None:
+        """Send a PING frame"""
+        if frame.get('raw_payload', False) or 'stream_id' in frame:
+            # Convert string payload to bytes if needed
+            if isinstance(frame.get('payload'), str):
+                payload = frame['payload'].encode('utf-8')
+            else:
+                payload = frame.get('payload', b'\x00' * 8)
+            
+            # Handle custom length if specified, otherwise ensure 8 bytes
+            if 'force_length' in frame:
+                if len(payload) > frame['force_length']:
+                    payload = payload[:frame['force_length']]
+                elif len(payload) < frame['force_length']:
+                    payload = payload.ljust(frame['force_length'], b'\x00')
+            else:
+                # Default behavior: ensure exactly 8 bytes
+                if len(payload) < 8:
+                    payload = payload.ljust(8, b'\x00')
+                elif len(payload) > 8:
+                    payload = payload[:8]
+            
+            frame_header = (
+                len(payload).to_bytes(3, byteorder='big') +  # Length (from payload)
+                b'\x06' +  # Type (6 for PING)
+                self._encode_flags(frame.get('flags', [])) +  # Flags
+                frame.get('stream_id', 0).to_bytes(4, byteorder='big')  # Stream ID
+            )
+            
+            self.client_socket.sendall(frame_header + payload)
+        else:
+            # Use h2 library's PING support
+            opaque_data = frame.get('payload', b'\x00' * 8)
+            if isinstance(opaque_data, str):
+                opaque_data = opaque_data.encode('utf-8')
+            
+            self.conn.ping(opaque_data)
+            self.client_socket.sendall(self.conn.data_to_send())
+
+    def _encode_flags(self, flags: List[str]) -> bytes:
+        """Helper method to encode frame flags"""
+        flag_byte = 0
+        flag_mapping = {
+            'END_STREAM': 0x1,
+            'END_HEADERS': 0x4,
+            'PADDED': 0x8,
+            'PRIORITY': 0x20,
+            'ACK': 0x1
+        }
+        for flag in flags:
+            if flag in flag_mapping:
+                flag_byte |= flag_mapping[flag]
+        return bytes([flag_byte])
 
     def close(self) -> None:
         """Close the connection"""

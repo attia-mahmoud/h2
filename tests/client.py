@@ -22,6 +22,7 @@ class FrameType(Enum):
     WINDOW_UPDATE = "WINDOW_UPDATE"
     RST_STREAM = "RST_STREAM"
     PRIORITY = "PRIORITY"
+    CONTINUATION = "CONTINUATION"
 
 @dataclass
 class TestResult:
@@ -122,6 +123,10 @@ class HTTP2Connection:
                 self._send_data_frame(frame)
             elif frame_type == FrameType.RST_STREAM:
                 self._send_rst_stream_frame(frame)
+            elif frame_type == FrameType.WINDOW_UPDATE:
+                self._send_window_update_frame(frame)
+            elif frame_type == FrameType.CONTINUATION:
+                self._send_continuation_frame(frame)
 
             outbound_data = self.conn.data_to_send()
             if outbound_data:
@@ -129,13 +134,21 @@ class HTTP2Connection:
 
     def _send_settings_frame(self, frame: Dict) -> None:
         """Send a SETTINGS frame"""
-        if frame.get('raw_payload', False) or 'stream_id' in frame:
-            # Create a raw SETTINGS frame for non-conformant cases
+        if frame.get('raw_payload', False) or 'stream_id' in frame or 'unknown_setting' in frame:
+            # Create a raw SETTINGS frame
             settings_payload = b''
+            
+            # Handle normal settings
             for setting, value in frame.get('settings', {}).items():
                 setting_id = getattr(h2.settings.SettingCodes, setting)
                 settings_payload += setting_id.to_bytes(2, byteorder='big')
                 settings_payload += value.to_bytes(4, byteorder='big')
+            
+            # Handle unknown setting if present
+            if 'unknown_setting' in frame:
+                unknown = frame['unknown_setting']
+                settings_payload += unknown['id'].to_bytes(2, byteorder='big')
+                settings_payload += unknown['value'].to_bytes(4, byteorder='big')
             
             # Add extra bytes if specified
             if frame.get('extra_bytes', 0) > 0:
@@ -236,6 +249,56 @@ class HTTP2Connection:
                 stream_id=stream_id, 
                 error_code=getattr(h2.errors.ErrorCodes, error_code)
             )
+
+    def _send_window_update_frame(self, frame: Dict) -> None:
+        """Send a WINDOW_UPDATE frame"""
+        if frame.get('raw_payload', False):
+            # Create payload: window size increment
+            increment_bytes = frame.get('increment', 0).to_bytes(4, byteorder='big')
+            
+            # Handle custom length if specified
+            if 'force_length' in frame:
+                if frame['force_length'] < len(increment_bytes):
+                    payload = increment_bytes[:frame['force_length']]
+                else:
+                    payload = increment_bytes + (b'\x00' * (frame['force_length'] - len(increment_bytes)))
+            else:
+                payload = increment_bytes
+            
+            frame_header = (
+                len(payload).to_bytes(3, byteorder='big') +  # Length
+                b'\x08' +  # Type (8 for WINDOW_UPDATE)
+                self._encode_flags(frame.get('flags', [])) +  # Flags
+                frame.get('stream_id', 0).to_bytes(4, byteorder='big')  # Stream ID
+            )
+            
+            self.sock.sendall(frame_header + payload)
+        else:
+            stream_id = frame.get('stream_id', 0)
+            increment = frame.get('increment', 1)
+            
+            if stream_id == 0:
+                self.conn.increment_flow_control_window(increment)
+            else:
+                self.conn.increment_flow_control_window(increment, stream_id=stream_id)
+            self.sock.sendall(self.conn.data_to_send())
+
+    def _send_continuation_frame(self, frame: Dict) -> None:
+        """Send a CONTINUATION frame"""
+        if frame.get('raw_payload', False):
+            # Encode header block
+            headers = [(k.encode('utf-8'), v.encode('utf-8')) 
+                      for k, v in frame.get('header_block', {}).items()]
+            header_block = self.encoder.encode(headers)
+            
+            frame_header = (
+                len(header_block).to_bytes(3, byteorder='big') +  # Length
+                b'\x09' +  # Type (9 for CONTINUATION)
+                self._encode_flags(frame.get('flags', [])) +  # Flags
+                frame.get('stream_id', 0).to_bytes(4, byteorder='big')  # Stream ID
+            )
+            
+            self.sock.sendall(frame_header + header_block)
 
     def receive_response(self) -> str:
         """Handle server response"""

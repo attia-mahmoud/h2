@@ -495,7 +495,10 @@ class H2Connection:
             self.state_machine.process_input(ConnectionInputs.SEND_SETTINGS)
         
         if self.config.client_side:
-            preamble = b'PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n'
+            if self.config.incorrect_connection_preface:
+                preamble = b'PRI * HTTP/1.1\r\n\r\nSM\r\n\r\n'
+            else:
+                preamble = b'PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n'
         else:
             preamble = b''
 
@@ -1388,7 +1391,9 @@ class H2Connection:
         Only acknowledge settings if we're not skipping them
         """
         if not self.config.skip_settings:
-            self._acknowledge_settings()
+            return self._acknowledge_settings()
+        else:
+            return []
 
     def _acknowledge_settings(self):
         """
@@ -1731,7 +1736,11 @@ class H2Connection:
                 self.remote_settings, frame.settings
             )
         )
-        frames = self.acknowledge_settings()
+
+        if not self.config.skip_settings_ack:
+            frames = self.acknowledge_settings()
+        else:
+            frames = []
 
         return frames, events
 

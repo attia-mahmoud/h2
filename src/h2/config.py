@@ -173,7 +173,9 @@ class H2Configuration:
                  validate_inbound_headers=True,
                  normalize_inbound_headers=True,
                  logger=None,
-                 skip_settings=False):
+                 skip_settings=False,
+                 skip_settings_ack=False,
+                 incorrect_connection_preface=False):
         self.client_side = client_side
         self.header_encoding = header_encoding
         self.validate_outbound_headers = validate_outbound_headers
@@ -183,6 +185,8 @@ class H2Configuration:
         self.normalize_inbound_headers = normalize_inbound_headers
         self.logger = logger or DummyLogger(__name__)
         self.skip_settings = skip_settings
+        self.skip_settings_ack = skip_settings_ack
+        self.incorrect_connection_preface = incorrect_connection_preface
 
     @property
     def header_encoding(self):

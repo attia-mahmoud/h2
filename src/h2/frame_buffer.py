@@ -48,8 +48,8 @@ class FrameBuffer:
             data_len = len(data)
             of_which_preamble = min(self._preamble_len, data_len)
 
-            if self._preamble[:of_which_preamble] != data[:of_which_preamble]:
-                raise ProtocolError("Invalid HTTP/2 preamble.")
+            # if self._preamble[:of_which_preamble] != data[:of_which_preamble]:
+            #     raise ProtocolError("Invalid HTTP/2 preamble.")
 
             data = data[of_which_preamble:]
             self._preamble_len -= of_which_preamble

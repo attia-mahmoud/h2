@@ -118,7 +118,9 @@ class HTTP2Connection:
             validate_outbound_headers=False,
             normalize_inbound_headers=False,
             normalize_outbound_headers=False,
-            skip_settings=settings.get('skip_client_settings', False)
+            skip_settings=settings.get('skip_client_settings', False),
+            skip_settings_ack=settings.get('skip_server_settings_ack', False),
+            incorrect_connection_preface=settings.get('incorrect_connection_preface', False)
         )
         self.conn = h2.connection.H2Connection(config=config)
 

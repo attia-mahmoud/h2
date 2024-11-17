@@ -244,6 +244,144 @@
                 "body": "Hello, World!"
               }
             ]
+          },
+          {
+            "id": 6,
+            "description": "The SETTINGS frames received from a peer as part of the connection preface MUST be acknowledged (see Section 6.5.3) after sending the connection preface.",
+            "connection_settings": {
+              "skip_server_settings_ack": true
+            },
+            "client_frames": [
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
+                  },
+                  "regular_headers": {
+                    "user-agent": "test-client"
+                  }
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain",
+                    "content-length": "13"
+                  }
+                },
+                "body": "Hello, World!"
+              }
+            ]
+          },
+          {
+            "id": 7,
+            "description": "The SETTINGS frames received from a peer as part of the connection preface MUST be acknowledged (see Section 6.5.3) after sending the connection preface.",
+            "connection_settings": {
+              "skip_client_settings_ack": true
+            },
+            "client_frames": [
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
+                  },
+                  "regular_headers": {
+                    "user-agent": "test-client"
+                  }
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain",
+                    "content-length": "13"
+                  }
+                },
+                "body": "Hello, World!"
+              }
+            ]
+          },
+          {
+            "id": 8,
+            "description": "Clients and servers MUST treat an invalid connection preface as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
+            "connection_settings": {
+              "incorrect_connection_preface": true
+            },
+            "client_frames": [
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
+                  },
+                  "regular_headers": {
+                    "user-agent": "test-client"
+                  }
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain",
+                    "content-length": "13"
+                  }
+                },
+                "body": "Hello, World!"
+              }
+            ]
           }
         ]
       },
@@ -252,7 +390,7 @@
         "section": "4.1",
         "cases": [
           {
-            "id": 8,
+            "id": 9,
             "description": "Values greater than 16,384 MUST NOT be sent unless receiver has set larger SETTINGS_MAX_FRAME_SIZE",
             "client_frames": [
               {

@@ -40,6 +40,7 @@ class FrameType(Enum):
     RST_STREAM = "RST_STREAM"
     PRIORITY = "PRIORITY"
     CONTINUATION = "CONTINUATION"
+    UNKNOWN = "UNKNOWN"
 
 @dataclass
 class TestResult:
@@ -155,6 +156,24 @@ class HTTP2Connection:
         self.logger.debug(f"Formatting custom headers: {headers_dict}")
         return [(name.lower(), str(value)) for name, value in headers_dict.items()]
 
+    def _send_unknown_frame(self, frame: Dict) -> None:
+        """Send an unknown frame type"""
+        self.logger.info(f"Preparing UNKNOWN frame: {frame}")
+        
+        # Create frame header (9 bytes)
+        # Length (3 bytes) | Type (1 byte) | Flags (1 byte) | Stream ID (4 bytes)
+        payload = frame.get('payload', '').encode('utf-8')
+        frame_header = (
+            len(payload).to_bytes(3, byteorder='big') +  # Length
+            frame['frame_type_id'].to_bytes(1, byteorder='big') +  # Type (99)
+            (0).to_bytes(1, byteorder='big') +  # Flags
+            frame.get('stream_id', 0).to_bytes(4, byteorder='big')  # Stream ID
+        )
+        
+        # Send frame
+        self.logger.info(f"Sending unknown frame type {frame['frame_type_id']}")
+        self.sock.sendall(frame_header + payload)
+
     def send_frames(self, frames: List[Dict]) -> None:
         """Send frames according to test configuration"""
         self.logger.info("\n🔍 Frame Sending Check:")
@@ -179,6 +198,8 @@ class HTTP2Connection:
                     self._send_window_update_frame(frame)
                 elif frame_type == FrameType.CONTINUATION:
                     self._send_continuation_frame(frame)
+                elif frame_type == FrameType.UNKNOWN:
+                    self._send_unknown_frame(frame)
 
                 outbound_data = self.conn.data_to_send()
                 if outbound_data:

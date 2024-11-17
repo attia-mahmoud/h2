@@ -2,17 +2,34 @@ import h2.connection
 import h2.config
 import h2.events
 import socket
-import select
 import json
 import ssl
 import logging
+import os
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Tuple, Dict, Optional, Any
 import sys
+from datetime import datetime
+import argparse
+
+# Create logs directory structure if it doesn't exist
+log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs', 'server')
+os.makedirs(log_dir, exist_ok=True)
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+log_file = os.path.join(log_dir, f'http2_server_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_file),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
+logger.info(f"Starting HTTP/2 server logging to {log_file}")
 
 class FrameType(Enum):
     HEADERS = "HEADERS"
@@ -34,25 +51,34 @@ class ServerResponse:
 class TestCaseManager:
     def __init__(self, json_path: str):
         self.json_path = json_path
+        self.logger = logging.getLogger(f"{__name__}.TestCaseManager")
+        self.logger.debug(f"Initializing TestCaseManager with JSON path: {json_path}")
         self.test_data = self._load_json()
-        self.logger = logging.getLogger(__name__)
 
     def _load_json(self) -> Dict:
         """Load and parse JSON test configuration"""
+        self.logger.info(f"Loading test configuration from {self.json_path}")
         try:
             with open(self.json_path, 'r') as f:
-                return json.load(f)
+                data = json.load(f)
+                self.logger.debug(f"Successfully loaded {len(data['test_suites'])} test suites")
+                return data
         except FileNotFoundError:
+            self.logger.error(f"Test configuration file not found: {self.json_path}")
             raise FileNotFoundError(f"{self.json_path} not found")
         except json.JSONDecodeError:
+            self.logger.error(f"Invalid JSON in configuration file: {self.json_path}")
             raise ValueError(f"Invalid JSON in {self.json_path}")
 
     def find_test_case(self, test_id: int) -> Tuple[Optional[Dict], Optional[Dict]]:
         """Find test case and its parent suite by ID"""
+        self.logger.debug(f"Searching for test case with ID: {test_id}")
         for suite in self.test_data['test_suites']:
             for case in suite['cases']:
                 if case['id'] == test_id:
+                    self.logger.info(f"Found test case {test_id} in suite: {suite['name']}")
                     return case, suite
+        self.logger.warning(f"Test case {test_id} not found")
         return None, None
 
 class HTTP2Connection:
@@ -61,11 +87,12 @@ class HTTP2Connection:
         self.addr = addr
         self.test_case = test_case
         self.conn = None
-        self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(f"{__name__}.HTTP2Connection")
+        self.logger.info(f"New HTTP2Connection instance created for {addr}")
 
     def handle(self) -> None:
         """Handle client connection"""
-        self.logger.info(f"Connection from {self.addr}")
+        self.logger.info(f"Starting connection handling for {self.addr}")
         
         try:
             self._initialize_connection()
@@ -78,21 +105,23 @@ class HTTP2Connection:
 
     def _initialize_connection(self) -> None:
         """Initialize H2 connection"""
+        self.logger.debug("Initializing H2 connection")
         config = h2.config.H2Configuration(client_side=False)
         self.conn = h2.connection.H2Connection(config=config)
+        self.logger.debug("H2 connection initialized successfully")
 
     def _handle_client_preface(self) -> None:
         """Handle client preface"""
         self.logger.info("Waiting for client preface...")
         preface = self.client_socket.recv(24)
-        if preface != b'PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n':
-            raise ValueError(f"Invalid client preface: {preface}")
-        self.logger.info("Valid client preface received")
+        self.logger.debug(f"Received client preface: {preface}")
 
     def _send_server_frames(self) -> None:
         """Send frames specified in test case"""
+        self.logger.info("Starting to send server frames")
         for frame in self.test_case['server_frames']:
             frame_type = FrameType(frame['type'].upper())
+            self.logger.debug(f"Processing frame of type: {frame_type}")
             
             if frame_type == FrameType.SETTINGS:
                 self._send_settings_frame(frame)
@@ -111,26 +140,32 @@ class HTTP2Connection:
 
     def _send_settings_frame(self, frame: Dict) -> None:
         """Send a SETTINGS frame"""
+        self.logger.debug(f"Preparing to send SETTINGS frame: {frame}")
         if frame.get('raw_payload', False) or 'stream_id' in frame:
+            self.logger.info("Sending raw SETTINGS frame")
             settings_payload = b''
             for setting, value in frame.get('settings', {}).items():
+                self.logger.debug(f"Adding setting {setting}={value}")
                 setting_id = getattr(h2.settings.SettingCodes, setting)
                 settings_payload += setting_id.to_bytes(2, byteorder='big')
                 settings_payload += value.to_bytes(4, byteorder='big')
             
             frame_header = (
-                len(settings_payload).to_bytes(3, byteorder='big') +  # Length
-                b'\x04' +  # Type (4 for SETTINGS)
-                (b'\x01' if 'ACK' in frame.get('flags', []) else b'\x00') +  # Flags
+                len(settings_payload).to_bytes(3, byteorder='big') +
+                b'\x04' +
+                (b'\x01' if 'ACK' in frame.get('flags', []) else b'\x00') +
                 frame.get('stream_id', 0).to_bytes(4, byteorder='big')
             )
             
             self.client_socket.sendall(frame_header + settings_payload)
+            self.logger.debug("Raw SETTINGS frame sent successfully")
         else:
+            self.logger.info("Sending SETTINGS frame using h2 library")
             self.conn.update_settings(frame.get('settings', {}))
             if 'ACK' in frame.get('flags', []):
                 self.conn.acknowledge_settings()
             self.client_socket.sendall(self.conn.data_to_send())
+            self.logger.debug("SETTINGS frame sent successfully via h2 library")
 
     def _send_headers_frame(self, frame: Dict) -> None:
         """Send a HEADERS frame"""
@@ -350,24 +385,28 @@ class HTTP2Connection:
 
     def close(self) -> None:
         """Close the connection"""
+        self.logger.info(f"Closing connection to {self.addr}")
         self.client_socket.close()
-        self.logger.info("Connection closed")
+        self.logger.debug("Connection closed successfully")
 
 class HTTP2Server:
     def __init__(self, host: str = 'localhost', port: int = 7700, json_path: str = 'test_cases.json'):
         self.host = host
         self.port = port
         self.sock = None
+        self.logger = logging.getLogger(f"{__name__}.HTTP2Server")
+        self.logger.info(f"Initializing HTTP2Server on {host}:{port}")
         self.test_manager = TestCaseManager(json_path)
-        self.logger = logging.getLogger(__name__)
 
     def _setup_socket(self, test_id: int) -> None:
         """Setup server socket with test case configuration"""
+        self.logger.info(f"Setting up server socket for test ID: {test_id}")
         test_case, suite = self.test_manager.find_test_case(test_id)
         if not test_case:
+            self.logger.error(f"Test {test_id} not found")
             raise ValueError(f"Test {test_id} not found")
 
-        self.logger.info(f"\nRunning test suite: {suite['name']}")
+        self.logger.info(f"Running test suite: {suite['name']}")
         self.logger.info(f"Section: {suite['section']}")
         self.logger.info(f"Description: {test_case['description']}")
 
@@ -377,29 +416,42 @@ class HTTP2Server:
 
     def _create_socket(self) -> None:
         """Create and configure base socket"""
+        self.logger.debug("Creating server socket")
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.logger.debug("Server socket created successfully")
 
     def _configure_tls(self, test_case: Dict[str, Any]) -> None:
         """Configure TLS if specified in test case"""
         connection_settings = test_case.get('connection_settings', {})
         if connection_settings.get('tls_enabled', False):
             self.logger.info("Setting up TLS...")
-            context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-            context.load_cert_chain(certfile="certs/server.crt", keyfile="certs/server.key")
-            self.sock = context.wrap_socket(self.sock, server_side=True)
-            self.logger.info("TLS established")
+            try:
+                context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+                context.load_cert_chain(certfile="certs/server.crt", keyfile="certs/server.key")
+                self.sock = context.wrap_socket(self.sock, server_side=True)
+                self.logger.info("TLS configured successfully")
+            except Exception as e:
+                self.logger.error(f"Failed to configure TLS: {e}", exc_info=True)
+                raise
 
     def _bind_and_listen(self) -> None:
         """Bind socket and start listening"""
-        self.sock.bind((self.host, self.port))
-        self.sock.listen(5)
-        self.sock.settimeout(10)
+        try:
+            self.sock.bind((self.host, self.port))
+            self.sock.listen(5)
+            self.sock.settimeout(10)
+            self.logger.info(f"Server bound to {self.host}:{self.port} and listening")
+        except Exception as e:
+            self.logger.error(f"Failed to bind and listen: {e}", exc_info=True)
+            raise
 
     def run(self, test_id: int) -> None:
         """Run the server for a specific test case"""
+        self.logger.info(f"Starting server for test ID: {test_id}")
         test_case, suite = self.test_manager.find_test_case(test_id)
         if not test_case:
+            self.logger.error(f"Test {test_id} not found")
             raise ValueError(f"Test {test_id} not found")
 
         self._setup_socket(test_id)
@@ -407,23 +459,35 @@ class HTTP2Server:
         
         try:
             while True:
+                self.logger.debug("Waiting for client connection...")
                 client_socket, addr = self.sock.accept()
+                self.logger.info(f"Accepted connection from {addr}")
                 connection = HTTP2Connection(client_socket, addr, test_case)
                 connection.handle()
                 break
+        except socket.timeout:
+            self.logger.warning("Connection timeout while waiting for client")
         except KeyboardInterrupt:
-            self.logger.info("\nShutting down server...")
+            self.logger.info("Server shutdown requested via keyboard interrupt")
+        except Exception as e:
+            self.logger.error(f"Unexpected error during server operation: {e}", exc_info=True)
         finally:
             if self.sock:
+                self.logger.info("Closing server socket")
                 self.sock.close()
 
 def main():
+    parser = argparse.ArgumentParser(description='Run HTTP/2 server')
+    parser.add_argument('test_id', type=int, help='Test ID to run')
+    args = parser.parse_args()
+    
+    logger = logging.getLogger(f"{__name__}.main")
     try:
-        test_id = 8
+        logger.info(f"Starting HTTP/2 server with test ID: {args.test_id}")
         server = HTTP2Server()
-        server.run(test_id)
+        server.run(args.test_id)
     except Exception as e:
-        logging.error(f"Error: {e}", exc_info=True)
+        logger.error(f"Fatal error: {e}", exc_info=True)
         sys.exit(1)
 
 if __name__ == '__main__':

@@ -5,15 +5,32 @@ import h2.settings
 import socket
 import json
 import sys
-import time
 import logging
 import ssl
+import os
+from datetime import datetime
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Tuple, Dict, Optional, Any
+import argparse
+
+# Create logs directory structure if it doesn't exist
+log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs', 'client')
+os.makedirs(log_dir, exist_ok=True)
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+log_file = os.path.join(log_dir, f'http2_client_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_file),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
+logger.info(f"Starting HTTP/2 client logging to {log_file}")
 
 class FrameType(Enum):
     HEADERS = "HEADERS"
@@ -27,7 +44,7 @@ class FrameType(Enum):
 @dataclass
 class TestResult:
     test_id: int
-    success: bool
+    completed: bool
     response: str
     error: Optional[str] = None
 
@@ -37,112 +54,119 @@ class HTTP2Connection:
         self.port = port
         self.sock = None
         self.conn = None
-        self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(f"{__name__}.HTTP2Connection")
+        self.logger.info(f"Initializing HTTP2Connection to {host}:{port}")
 
     def setup(self, test_case: Dict[str, Any]) -> None:
         """Setup and initialize HTTP/2 connection"""
+        self.logger.info("Setting up HTTP/2 connection")
         self._create_socket(test_case)
         self._setup_tls(test_case)
         self._initialize_connection(test_case)
+        self.logger.info("Connection setup completed")
 
     def _create_socket(self, test_case: Dict[str, Any]) -> None:
-        self.sock = socket.create_connection((self.host, self.port))
-        self.logger.info("Socket connected")
+        self.logger.debug(f"Creating socket connection to {self.host}:{self.port}")
+        try:
+            self.sock = socket.create_connection((self.host, self.port))
+            self.logger.info("Socket connected successfully")
+        except Exception as e:
+            self.logger.error(f"Failed to create socket connection: {e}", exc_info=True)
+            raise
 
     def _setup_tls(self, test_case: Dict[str, Any]) -> None:
         """Setup TLS if enabled in test case"""
         connection_settings = test_case.get('connection_settings', {})
         if connection_settings.get('tls_enabled', False):
-            self.logger.info("Setting up TLS...")
-            context = ssl.create_default_context()
-            context.check_hostname = False
-            context.verify_mode = ssl.CERT_NONE
-            self.sock = context.wrap_socket(self.sock)
-            self.logger.info("TLS established")
+            self.logger.info("Setting up TLS connection")
+            try:
+                context = ssl.create_default_context()
+                context.check_hostname = False
+                context.verify_mode = ssl.CERT_NONE
+                self.sock = context.wrap_socket(self.sock)
+                self.logger.info("TLS connection established successfully")
+            except Exception as e:
+                self.logger.error(f"TLS setup failed: {e}", exc_info=True)
+                raise
 
     def _initialize_connection(self, test_case: Dict[str, Any]) -> None:
         """Initialize HTTP/2 connection"""
+        self.logger.info("Initializing HTTP/2 connection")
         self._apply_connection_settings(test_case.get('connection_settings', {}))
         self._send_client_preface()
         self._handle_server_preface()
 
     def _apply_connection_settings(self, settings: Dict[str, Any]) -> None:
         """Apply connection settings from test case"""
+        self.logger.debug(f"Applying connection settings: {settings}")
         config = h2.config.H2Configuration(
             client_side=True,
             header_encoding='utf-8'
         )
         self.conn = h2.connection.H2Connection(config=config)
         if 'settings' in settings:
+            self.logger.debug(f"Updating settings: {settings['settings']}")
             self.conn.update_settings(settings['settings'])
 
     def _send_client_preface(self) -> None:
         """Send HTTP/2 client preface"""
-        self.logger.info("Sending client preface...")
-        preface = b'PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n'
-        self.sock.sendall(preface)
-        self.conn.initiate_connection()
-        self.sock.sendall(self.conn.data_to_send())
+        self.logger.info("Sending client preface")
+        try:
+            preface = b'PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n'
+            self.sock.sendall(preface)
+            self.conn.initiate_connection()
+            self.sock.sendall(self.conn.data_to_send())
+            self.logger.debug("Client preface sent successfully")
+        except Exception as e:
+            self.logger.error(f"Failed to send client preface: {e}", exc_info=True)
+            raise
 
     def _handle_server_preface(self) -> None:
         """Handle server preface and SETTINGS frame"""
-        self.logger.info("Waiting for server SETTINGS...")
-        data = self.sock.recv(65535)
-        if not data:
-            raise Exception("No server SETTINGS received")
-        events = self.conn.receive_data(data)
-        self.logger.info(f"Received server SETTINGS: {events}")
-        self.sock.sendall(self.conn.data_to_send())
-
-    def _format_headers(self, headers) -> List[Tuple[str, str]]:
-        """Convert YAML header format to h2 format"""
-        formatted_headers = []
-        
-        if 'pseudo_headers' in headers:
-            for name, value in headers['pseudo_headers'].items():
-                formatted_headers.append((f":{name}", str(value)))
-        
-        if 'regular_headers' in headers:
-            for name, value in headers['regular_headers'].items():
-                formatted_headers.append((name, str(value)))
-        
-        return formatted_headers
-
-    def _format_custom_headers(self, headers) -> List[Tuple[str, str]]:
-        """Convert YAML header format to h2 format"""
-        headers = []
-        
-        for name, value in headers.items():
-            headers.append((name, str(value)))
-        
-        return headers
+        self.logger.info("Waiting for server SETTINGS")
+        try:
+            data = self.sock.recv(65535)
+            events = self.conn.receive_data(data)
+            self.logger.debug(f"Received server events: {events}")
+            self.sock.sendall(self.conn.data_to_send())
+            self.logger.info("Server preface handled successfully")
+        except Exception as e:
+            self.logger.error(f"Failed to handle server preface: {e}", exc_info=True)
+            raise
 
     def send_frames(self, frames: List[Dict]) -> None:
         """Send frames according to test configuration"""
+        self.logger.info(f"Sending {len(frames)} frames")
         for frame in frames:
             frame_type = FrameType(frame['type'].upper())
+            self.logger.debug(f"Processing frame of type: {frame_type}")
             
-            if frame_type == FrameType.SETTINGS:
-                self._send_settings_frame(frame)
-            elif frame_type == FrameType.PRIORITY:
-                self._send_priority_frame(frame)
-            elif frame_type == FrameType.HEADERS:
-                self._send_headers_frame(frame)
-            elif frame_type == FrameType.DATA:
-                self._send_data_frame(frame)
-            elif frame_type == FrameType.RST_STREAM:
-                self._send_rst_stream_frame(frame)
-            elif frame_type == FrameType.WINDOW_UPDATE:
-                self._send_window_update_frame(frame)
-            elif frame_type == FrameType.CONTINUATION:
-                self._send_continuation_frame(frame)
+            try:
+                if frame_type == FrameType.SETTINGS:
+                    self._send_settings_frame(frame)
+                elif frame_type == FrameType.PRIORITY:
+                    self._send_priority_frame(frame)
+                elif frame_type == FrameType.HEADERS:
+                    self._send_headers_frame(frame)
+                elif frame_type == FrameType.DATA:
+                    self._send_data_frame(frame)
+                elif frame_type == FrameType.RST_STREAM:
+                    self._send_rst_stream_frame(frame)
+                elif frame_type == FrameType.WINDOW_UPDATE:
+                    self._send_window_update_frame(frame)
+                elif frame_type == FrameType.CONTINUATION:
+                    self._send_continuation_frame(frame)
 
-            outbound_data = self.conn.data_to_send()
-            if outbound_data:
-                self.sock.sendall(outbound_data)
+                outbound_data = self.conn.data_to_send()
+                if outbound_data:
+                    self.sock.sendall(outbound_data)
+            except Exception as e:
+                self.logger.error(f"Error sending {frame_type} frame: {e}", exc_info=True)
+                raise
 
     def _send_settings_frame(self, frame: Dict) -> None:
         """Send a SETTINGS frame"""
+        self.logger.debug(f"Preparing SETTINGS frame: {frame}")
         if frame.get('raw_payload', False) or 'stream_id' in frame or 'unknown_setting' in frame:
             # Create a raw SETTINGS frame
             settings_payload = b''
@@ -316,73 +340,98 @@ class HTTP2Connection:
 
     def receive_response(self) -> str:
         """Handle server response"""
+        self.logger.info("Waiting for server response")
         response_data = b''
         
-        while True:
-            data = self.sock.recv(65535)
-            if not data:
-                break
-                
-            events = self.conn.receive_data(data)
-            
-            for event in events:
-                if isinstance(event, h2.events.ResponseReceived):
-                    self.logger.info(f"Response headers: {event.headers}")
-                elif isinstance(event, h2.events.DataReceived):
-                    response_data += event.data
-                    self.conn.acknowledge_received_data(
-                        event.flow_controlled_length, 
-                        event.stream_id
-                    )
-                elif isinstance(event, h2.events.StreamEnded):
-                    return response_data.decode('utf-8')
+        try:
+            while True:
+                data = self.sock.recv(65535)
+                if not data:
+                    self.logger.debug("No more data received")
+                    break
                     
-            outbound_data = self.conn.data_to_send()
-            if outbound_data:
-                self.sock.sendall(outbound_data)
-        
-        return response_data.decode('utf-8') if response_data else ''
+                events = self.conn.receive_data(data)
+                
+                for event in events:
+                    if isinstance(event, h2.events.ResponseReceived):
+                        self.logger.debug(f"Response headers received: {event.headers}")
+                    elif isinstance(event, h2.events.DataReceived):
+                        self.logger.debug(f"Received data chunk of length: {len(event.data)}")
+                        response_data += event.data
+                        self.conn.acknowledge_received_data(
+                            event.flow_controlled_length, 
+                            event.stream_id
+                        )
+                    elif isinstance(event, h2.events.StreamEnded):
+                        self.logger.info("Stream ended")
+                        return response_data.decode('utf-8')
+                        
+                outbound_data = self.conn.data_to_send()
+                if outbound_data:
+                    self.sock.sendall(outbound_data)
+            
+            return response_data.decode('utf-8') if response_data else ''
+        except Exception as e:
+            self.logger.error(f"Error receiving response: {e}", exc_info=True)
+            raise
 
     def close(self) -> None:
         """Close the connection"""
         if self.sock:
-            self.sock.close()
+            self.logger.info("Closing connection")
+            try:
+                self.sock.close()
+                self.logger.debug("Connection closed successfully")
+            except Exception as e:
+                self.logger.error(f"Error closing connection: {e}", exc_info=True)
 
 class TestCaseManager:
     def __init__(self, json_path: str):
         self.json_path = json_path
+        self.logger = logging.getLogger(f"{__name__}.TestCaseManager")
+        self.logger.info(f"Initializing TestCaseManager with JSON path: {json_path}")
         self.test_data = self._load_json()
-        self.logger = logging.getLogger(__name__)
 
     def _load_json(self) -> Dict:
         """Load and parse JSON test configuration"""
+        self.logger.info(f"Loading test configuration from {self.json_path}")
         try:
             with open(self.json_path, 'r') as f:
-                return json.load(f)
+                data = json.load(f)
+                self.logger.debug(f"Successfully loaded {len(data['test_suites'])} test suites")
+                return data
         except FileNotFoundError:
+            self.logger.error(f"Test configuration file not found: {self.json_path}")
             raise FileNotFoundError(f"{self.json_path} not found")
         except json.JSONDecodeError:
+            self.logger.error(f"Invalid JSON in configuration file: {self.json_path}")
             raise ValueError(f"Invalid JSON in {self.json_path}")
 
     def find_test_case(self, test_id: int) -> Tuple[Optional[Dict], Optional[Dict]]:
         """Find test case and its parent suite by ID"""
+        self.logger.debug(f"Searching for test case with ID: {test_id}")
         for suite in self.test_data['test_suites']:
             for case in suite['cases']:
                 if case['id'] == test_id:
+                    self.logger.info(f"Found test case {test_id} in suite: {suite['name']}")
                     return case, suite
+        self.logger.warning(f"Test case {test_id} not found")
         return None, None
 
 class HTTP2Client:
     def __init__(self, host: str = 'localhost', port: int = 7700, json_path: str = 'test_cases.json'):
+        self.logger = logging.getLogger(f"{__name__}.HTTP2Client")
+        self.logger.info(f"Initializing HTTP2Client for {host}:{port}")
         self.connection = HTTP2Connection(host, port)
         self.test_manager = TestCaseManager(json_path)
-        self.logger = logging.getLogger(__name__)
 
     def run_test(self, test_id: int) -> TestResult:
         """Run a single test case"""
+        self.logger.info(f"Running test case {test_id}")
         try:
             test_case, suite = self.test_manager.find_test_case(test_id)
             if not test_case:
+                self.logger.error(f"Test {test_id} not found")
                 raise ValueError(f"Test {test_id} not found")
 
             self.logger.info(f"Running test suite: {suite['name']}")
@@ -391,24 +440,29 @@ class HTTP2Client:
 
             expected_response = test_case.get('expected_response', {})
             if expected_response.get('type') == 'timeout':
-                self.connection.sock.settimeout(expected_response.get('duration', 5))
+                timeout = expected_response.get('duration', 5)
+                self.logger.debug(f"Setting socket timeout to {timeout} seconds")
+                self.connection.sock.settimeout(timeout)
 
             self.connection.setup(test_case)
             
             try:
                 response = self._execute_test(test_case)
+                self.logger.info("Test completed successfully")
                 return TestResult(test_id, True, response)
             except socket.timeout as e:
+                self.logger.warning(f"Socket timeout occurred: {e}")
                 return self._handle_timeout(test_case, test_id, e)
             
         except Exception as e:
-            self.logger.error(f"Test failed: {str(e)}", exc_info=True)
+            self.logger.error(f"Test failed: {e}", exc_info=True)
             return TestResult(test_id, False, "", str(e))
         finally:
             self.connection.close()
 
     def _execute_test(self, test_case: Dict[str, Any]) -> str:
         """Execute the test case and return the response"""
+        self.logger.debug("Executing test case")
         if 'client_frames' in test_case:
             self.connection.send_frames(test_case['client_frames'])
         
@@ -418,20 +472,35 @@ class HTTP2Client:
         """Handle timeout scenarios"""
         expected_response = test_case.get('expected_response', {})
         if expected_response.get('type') == 'timeout':
+            self.logger.info("Timeout occurred as expected")
             return TestResult(test_id, True, "Timeout as expected")
+        self.logger.error(f"Unexpected timeout: {error}")
         return TestResult(test_id, False, "", f"Unexpected timeout: {str(error)}")
 
 def main():
-    client = HTTP2Client()
+    parser = argparse.ArgumentParser(description='Run HTTP/2 client')
+    parser.add_argument('test_id', type=int, help='Test ID to run')
+    args = parser.parse_args()
+    
+    logger = logging.getLogger(f"{__name__}.main")
     try:
-        test_id = 8
-        result = client.run_test(test_id)
+        logger.info(f"Starting HTTP/2 client with test ID: {args.test_id}")
+        client = HTTP2Client()
+        result = client.run_test(args.test_id)
+        logger.info(f"Test {'PASSED' if result.success else 'FAILED'}")
+        if result.error:
+            logger.error(f"Test error: {result.error}")
+        logger.debug(f"Test response: {result.response}")
+        
         print(f"\nTest {'PASSED' if result.success else 'FAILED'}")
         if result.error:
             print(f"Error: {result.error}")
         print(f"Response: {result.response}")
+        
+        if not result.success:
+            sys.exit(1)
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"Fatal error: {e}", exc_info=True)
         sys.exit(1)
 
 if __name__ == '__main__':

@@ -182,12 +182,23 @@ class HTTP2Connection:
     def _process_client_frames(self) -> None:
         """Process incoming client frames"""
         self.logger.info("Processing client frames")
+        self.client_socket.settimeout(5.0)  # 5 second timeout
+        
+        MAX_FRAME_SIZE = 65535  # Standard HTTP/2 max frame size
+        
         try:
             while True:
-                data = self.client_socket.recv(65535)
+                data = self.client_socket.recv(MAX_FRAME_SIZE)
                 if not data:
+                    self.logger.info("Client closed connection")
                     break
                 
+                if len(data) >= MAX_FRAME_SIZE:
+                    error_msg = f"Received frame size ({len(data)}) exceeds maximum allowed size ({MAX_FRAME_SIZE})"
+                    self.logger.error(error_msg)
+                    return
+                
+                self.logger.info(f"Received {len(data)} bytes from client")
                 events = self.conn.receive_data(data)
                 for event in events:
                     # Log received frames in a prominent way

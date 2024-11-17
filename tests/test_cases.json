@@ -426,7 +426,54 @@
                 "flags": [
                   "END_STREAM"
                 ],
+                "stream_id": 2,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain",
+                    "content-length": "13"
+                  }
+                },
+                "body": "Hello, World!"
+              }
+            ]
+          },
+          {
+            "id": 10,
+            "description": "The frame type determines the format and semantics of the frame. Implementations MUST ignore and discard frames of unknown types.",
+            "client_frames": [
+              {
+                "type": "HEADERS",
+                "flags": ["END_HEADERS"],
                 "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
+                  },
+                  "regular_headers": {
+                    "user-agent": "test-client"
+                  }
+                }
+              },
+              {
+                "type": "UNKNOWN",
+                "flags": [],
+                "stream_id": 1,
+                "raw_payload": true,
+                "frame_type_id": 99,
+                "payload": "test payload"
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "HEADERS",
+                "flags": ["END_STREAM"],
+                "stream_id": 2,
                 "headers": {
                   "pseudo_headers": {
                     "status": "200"

@@ -13,11 +13,6 @@
             "description": "The 'h2c' protocol identifier MUST NOT be sent by a client or selected by a server.",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "flags": [
                   "END_STREAM"
@@ -39,11 +34,6 @@
               }
             ],
             "server_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "flags": [
@@ -72,11 +62,6 @@
             },
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "flags": [
                   "END_STREAM"
@@ -96,11 +81,6 @@
               }
             ],
             "server_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "flags": [
@@ -129,11 +109,6 @@
             },
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "flags": [
                   "END_STREAM"
@@ -153,11 +128,6 @@
               }
             ],
             "server_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "flags": [
@@ -237,11 +207,6 @@
             },
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "flags": [
                   "END_STREAM"
@@ -296,11 +261,6 @@
             "description": "Values greater than 16,384 MUST NOT be sent unless receiver has set larger SETTINGS_MAX_FRAME_SIZE",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "flags": [
                   "END_HEADERS"
@@ -328,11 +288,6 @@
               }
             ],
             "server_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "flags": [
@@ -363,11 +318,6 @@
             "description": "An endpoint MUST send an error code of FRAME_SIZE_ERROR if a frame exceeds the size defined in SETTINGS_MAX_FRAME_SIZE.",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "flags": [
                   "END_HEADERS"
@@ -395,11 +345,6 @@
               }
             ],
             "server_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "flags": [
@@ -430,11 +375,6 @@
             "description": "Streams initiated by a client MUST use odd-numbered stream identifiers.",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "flags": [
                   "END_HEADERS"
@@ -462,11 +402,6 @@
               }
             ],
             "server_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "flags": [
@@ -491,11 +426,6 @@
             "description": "Streams initiated by a server MUST use even-numbered stream identifiers.",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "flags": [
                   "END_HEADERS"
@@ -523,11 +453,6 @@
               }
             ],
             "server_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "flags": [
@@ -558,11 +483,6 @@
             "description": "An endpoint MUST NOT send a RST_STREAM in response to a RST_STREAM frame",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "RST_STREAM",
                 "stream_id": 1,
                 "error_code": "CANCEL"
@@ -587,11 +507,6 @@
             "description": "An endpoint MUST NOT send a RST_STREAM in response to a RST_STREAM frame",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "flags": [
                   "END_STREAM"
@@ -608,11 +523,6 @@
               }
             ],
             "server_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "flags": [
@@ -643,11 +553,6 @@
             "description": "If a PRIORITY frame is received with a stream identifier of 0x00, the recipient MUST respond with a connection error of type PROTOCOL_ERROR",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "PRIORITY",
                 "stream_id": 0,
                 "weight": 16,
@@ -656,11 +561,6 @@
               }
             ],
             "server_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "flags": [
@@ -691,11 +591,6 @@
             "description": "After receiving a RST_STREAM on a stream, the receiver MUST NOT send additional frames for that stream, except for PRIORITY",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "RST_STREAM",
                 "stream_id": 1,
                 "error_code": "CANCEL"
@@ -717,22 +612,12 @@
             "description": "If a RST_STREAM frame is received with a stream identifier of 0x00, the recipient MUST treat this as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "RST_STREAM",
                 "stream_id": 0,
                 "error_code": "CANCEL"
               }
             ],
             "server_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "flags": [
@@ -757,11 +642,6 @@
             "description": "A RST_STREAM frame with a length other than 4 octets MUST be treated as a connection error (Section 5.4.1) of type FRAME_SIZE_ERROR.",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "RST_STREAM",
                 "stream_id": 1,
                 "error_code": "CANCEL",
@@ -769,11 +649,6 @@
               }
             ],
             "server_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "flags": [
@@ -804,11 +679,6 @@
             "description": "A SETTINGS frame MUST be sent by both endpoints at the start of a connection and MAY be sent at any other time by either endpoint over the lifetime of the connection.",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "flags": [
                   "END_STREAM"
@@ -825,11 +695,6 @@
               }
             ],
             "server_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "flags": [
@@ -953,11 +818,6 @@
             ],
             "server_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "PUSH_PROMISE",
                 "flags": [
                   "END_HEADERS"
@@ -979,11 +839,6 @@
             "id": 76,
             "description": "The initial value of SETTINGS_ENABLE_PUSH is 1. Any value other than 0 or 1 MUST be treated as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
             "client_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "SETTINGS",
                 "flags": [],
@@ -1027,11 +882,6 @@
               {
                 "type": "SETTINGS",
                 "flags": [],
-                "settings": {}
-              },
-              {
-                "type": "SETTINGS",
-                "flags": [],
                 "settings": {
                   "SETTINGS_INITIAL_WINDOW_SIZE": 2147483648
                 }
@@ -1052,11 +902,6 @@
               {
                 "type": "SETTINGS",
                 "flags": [],
-                "settings": {}
-              },
-              {
-                "type": "SETTINGS",
-                "flags": [],
                 "settings": {
                   "SETTINGS_MAX_FRAME_SIZE": 16777216
                 }
@@ -1074,11 +919,6 @@
             "id": 83,
             "description": "An endpoint that receives a SETTINGS frame with any unknown or unsupported identifier MUST ignore that setting.",
             "client_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "SETTINGS",
                 "raw_payload": true,
@@ -1127,11 +967,6 @@
             ],
             "server_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "PUSH_PROMISE",
                 "flags": ["END_HEADERS"],
                 "stream_id": 0,
@@ -1159,11 +994,6 @@
             ],
             "server_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "PUSH_PROMISE",
                 "flags": ["END_HEADERS"],
                 "stream_id": 1,
@@ -1190,11 +1020,6 @@
               }
             ],
             "server_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "PUSH_PROMISE",
                 "flags": ["END_HEADERS", "PADDED"],
@@ -1230,11 +1055,6 @@
               }
             ],
             "server_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "PING",
                 "flags": [],
@@ -1293,11 +1113,6 @@
             ],
             "server_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "GOAWAY",
                 "stream_id": 1,
                 "raw_payload": true,
@@ -1316,11 +1131,6 @@
             "id": 114,
             "description": "A receiver MUST treat the receipt of a WINDOW_UPDATE frame with a flow-control window increment of 0 as a stream error (Section 5.4.2) of type PROTOCOL_ERROR; errors on the connection flow-control window MUST be treated as a connection error (Section 5.4.1).",
             "client_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "WINDOW_UPDATE",
                 "stream_id": 0,
@@ -1341,11 +1151,6 @@
             "description": "A WINDOW_UPDATE frame with a length other than 4 octets MUST be treated as a connection error (Section 5.4.1) of type FRAME_SIZE_ERROR.",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "WINDOW_UPDATE",
                 "stream_id": 0,
                 "raw_payload": true,
@@ -1365,11 +1170,6 @@
             "id": 119,
             "description": "A sender MUST NOT allow a flow-control window to exceed 2^31-1 octets. If a sender receives a WINDOW_UPDATE that causes a flow-control window to exceed this maximum, it MUST terminate either the stream or the connection, as appropriate.",
             "client_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "WINDOW_UPDATE",
                 "stream_id": 0,
@@ -1416,11 +1216,6 @@
             "description": "If a CONTINUATION frame is received with a Stream Identifier field of 0x00, the recipient MUST respond with a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "stream_id": 1,
                 "headers": {
@@ -1459,11 +1254,6 @@
             "description": "A CONTINUATION frame MUST be preceded by a HEADERS, PUSH_PROMISE or CONTINUATION frame without the END_HEADERS flag set.",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "CONTINUATION",
                 "stream_id": 1,
                 "raw_payload": true,
@@ -1495,11 +1285,6 @@
             "id": 132,
             "description": "Other frames (from any stream) MUST NOT occur between the HEADERS frame and any CONTINUATION frames that might follow.",
             "client_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "stream_id": 1,
@@ -1543,11 +1328,6 @@
             "id": 133,
             "description": "Trailers MUST NOT include pseudo-header fields (Section 8.3).",
             "client_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "stream_id": 1,
@@ -1598,11 +1378,6 @@
             "description": "Field names MUST be converted to lowercase when constructing an HTTP/2 message.",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "stream_id": 1,
                 "flags": ["END_HEADERS", "END_STREAM"],
@@ -1634,11 +1409,6 @@
             "id": 141,
             "description": "A field name MUST NOT contain characters in the ranges 0x00-0x20, 0x41-0x5a, or 0x7f-0xff (all ranges inclusive). This specifically excludes all non-visible ASCII characters, ASCII SP (0x20), and uppercase characters ('A' to 'Z', ASCII 0x41 to 0x5a).",
             "client_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "stream_id": 1,
@@ -1674,11 +1444,6 @@
             "description": "With the exception of pseudo-header fields (Section 8.3), which have a name that starts with a single colon, field names MUST NOT include a colon (ASCII COLON, 0x3a).",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "stream_id": 1,
                 "flags": ["END_HEADERS", "END_STREAM"],
@@ -1708,11 +1473,6 @@
             "id": 143,
             "description": "A field value MUST NOT contain the zero value (ASCII NUL, 0x00), line feed (ASCII LF, 0x0a), or carriage return (ASCII CR, 0x0d) at any position.",
             "client_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "stream_id": 1,
@@ -1747,11 +1507,6 @@
             "description": "A field value MUST NOT start or end with an ASCII whitespace character (ASCII SP or HTAB, 0x20 or 0x09).",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "stream_id": 1,
                 "flags": ["END_HEADERS", "END_STREAM"],
@@ -1783,11 +1538,6 @@
             "description": "An endpoint MUST NOT generate an HTTP/2 message containing connection-specific header fields.",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "flags": [
                   "END_STREAM"
@@ -1818,11 +1568,6 @@
             "id": 148,
             "description": "The only exception to this is the TE header field, which MAY be present in an HTTP/2 request; when it is, it MUST NOT contain any value other than \"trailers\".",
             "client_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "stream_id": 1,
@@ -1860,11 +1605,6 @@
             "description": "Pseudo-header fields are not HTTP header fields. Endpoints MUST NOT generate pseudo-header fields other than those defined in this document.",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "stream_id": 1,
                 "flags": ["END_HEADERS", "END_STREAM"],
@@ -1896,11 +1636,6 @@
             "description": "Pseudo-header fields defined for requests MUST NOT appear in responses.",
             "server_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "stream_id": 1,
                 "flags": ["END_HEADERS", "END_STREAM"],
@@ -1928,11 +1663,6 @@
             "id": 154,
             "description": "Pseudo-header fields defined for responses MUST NOT appear in requests.",
             "client_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "stream_id": 1,
@@ -1965,11 +1695,6 @@
             "description": "All pseudo-header fields MUST appear in a field block before all regular field lines. Any request or response that contains a pseudo-header field that appears in a field block after a regular field line MUST be treated as malformed (Section 8.1.1).",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "stream_id": 1,
                 "flags": ["END_HEADERS", "END_STREAM"],
@@ -1997,11 +1722,6 @@
             "description": "The same pseudo-header field name MUST NOT appear more than once in a field block. A field block for an HTTP request or response that contains a repeated pseudo-header field name MUST be treated as malformed (Section 8.1.1).",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "stream_id": 1,
                 "flags": ["END_HEADERS", "END_STREAM"],
@@ -2027,11 +1747,6 @@
             "id": 161,
             "description": "Clients MUST NOT generate a request with a Host header field that differs from the \":authority\" pseudo-header field.",
             "client_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "stream_id": 1,
@@ -2063,11 +1778,6 @@
             "description": "':authority' MUST NOT include the deprecated userinfo subcomponent for \"http\" or \"https\" schemed URIs.",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "stream_id": 1,
                 "flags": ["END_HEADERS", "END_STREAM"],
@@ -2094,11 +1804,6 @@
             "id": 167,
             "description": "This pseudo-header field MUST NOT be empty for \"http\" or \"https\" URIs; \"http\" or \"https\" URIs that do not contain a path component MUST include a value of '/'. The exceptions to this rule are: an OPTIONS request for an \"http\" or \"https\" URI that does not include a path component; these MUST include a \":path\" pseudo-header field with a value of '*'.",
             "client_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "stream_id": 1,
@@ -2127,11 +1832,6 @@
             "description": "All HTTP/2 requests MUST include exactly one valid value for the \":method\", \":scheme\", and \":path\" pseudo-header fields, unless they are CONNECT requests (Section 8.5). An HTTP request that omits mandatory pseudo-header fields is malformed (Section 8.1.1).",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "stream_id": 1,
                 "flags": ["END_HEADERS", "END_STREAM"],
@@ -2157,11 +1857,6 @@
             "description": "For HTTP/2 responses, a single \":status\" pseudo-header field is defined that carries the HTTP status code field. This pseudo-header field MUST be included in all responses, including interim responses; otherwise, the response is malformed.",
             "client_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "HEADERS",
                 "stream_id": 1,
                 "flags": ["END_HEADERS", "END_STREAM"],
@@ -2175,11 +1870,6 @@
               }
             ],
             "server_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "stream_id": 1,
@@ -2214,11 +1904,6 @@
             ],
             "server_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "PUSH_PROMISE",
                 "stream_id": 1,
                 "promised_stream_id": 2,
@@ -2238,11 +1923,6 @@
             "id": 175,
             "description": "A client cannot push. Thus, servers MUST treat the receipt of a PUSH_PROMISE frame as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
             "client_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "PUSH_PROMISE",
                 "stream_id": 1,
@@ -2280,11 +1960,6 @@
             ],
             "server_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "PUSH_PROMISE",
                 "stream_id": 1,
                 "promised_stream_id": 2,
@@ -2312,11 +1987,6 @@
             ],
             "server_frames": [
               {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
                 "type": "PUSH_PROMISE",
                 "stream_id": 1,
                 "promised_stream_id": 2,
@@ -2342,11 +2012,6 @@
             "id": 182,
             "description": "The \":scheme\" and \":path\" pseudo-header fields MUST be omitted.",
             "client_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "stream_id": 1,

@@ -514,18 +514,69 @@
         ]
       },
       {
-        "name": "Frame Size",
-        "section": "4.2",
+        "name": "Stream States",
+        "section": "5.1",
         "cases": [
           {
-            "id": 13,
-            "description": "An endpoint MUST send an error code of FRAME_SIZE_ERROR if a frame exceeds the size defined in SETTINGS_MAX_FRAME_SIZE.",
+            "id": 16,
+            "description": "Receiving any frame other than HEADERS or PRIORITY on a stream in this state (idle) MUST be treated as a connection error of type PROTOCOL_ERROR.",
+            "client_frames": [
+              {
+                "type": "DATA",
+                "flags": ["END_STREAM"],
+                "stream_id": 1,
+                "payload": "Hello, World!"
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "HEADERS",
+                "flags": ["END_STREAM"],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 18,
+            "description": "An endpoint MUST NOT send any type of frame other than HEADERS, RST_STREAM, or PRIORITY in the reserved (local) state.",
+            "client_frames": [
+              {
+                "type": "PUSH_PROMISE",
+                "flags": ["END_HEADERS"],
+                "stream_id": 1,
+                "promised_stream_id": 2,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/resource",
+                    "authority": "localhost"
+                  }
+                }
+              },
+              {
+                "type": "DATA",
+                "stream_id": 2,
+                "flags": [],
+                "payload": "test"
+              }
+            ]
+          },
+          {
+            "id": 19,
+            "description": "An endpoint MUST NOT send any type of frame other than RST_STREAM, WINDOW_UPDATE, or PRIORITY in the reserved (remote) state.",
             "client_frames": [
               {
                 "type": "HEADERS",
-                "flags": [
-                  "END_HEADERS"
-                ],
+                "flags": ["END_HEADERS"],
                 "stream_id": 1,
                 "headers": {
                   "pseudo_headers": {
@@ -533,49 +584,96 @@
                     "scheme": "http",
                     "path": "/",
                     "authority": "localhost"
-                  },
-                  "regular_headers": {
-                    "user-agent": "test-8"
                   }
                 }
               },
               {
                 "type": "DATA",
-                "flags": [
-                  "END_STREAM"
-                ],
-                "stream_id": 1,
-                "payload_size": 17000
+                "stream_id": 2,
+                "flags": [],
+                "payload": "test"
               }
             ],
             "server_frames": [
               {
+                "type": "PUSH_PROMISE",
+                "flags": ["END_HEADERS"],
+                "stream_id": 1,
+                "promised_stream_id": 2,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/resource",
+                    "authority": "localhost"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 20,
+            "description": "If an endpoint receives additional frames, other than WINDOW_UPDATE, PRIORITY, or RST_STREAM, for a stream that is in the half-closed (remote) state, it MUST respond with a stream error of type STREAM_CLOSED.",
+            "client_frames": [
+              {
                 "type": "HEADERS",
-                "flags": [
-                  "END_STREAM"
-                ],
+                "flags": ["END_HEADERS"],
                 "stream_id": 1,
                 "headers": {
                   "pseudo_headers": {
-                    "status": "200"
-                  },
-                  "regular_headers": {
-                    "content-type": "text/plain",
-                    "content-length": "13"
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
                   }
-                },
-                "body": "Hello, World!"
+                }
+              },
+              {
+                "type": "DATA",
+                "flags": ["END_STREAM"],
+                "stream_id": 1,
+                "payload": "test"
+              },
+              {
+                "type": "DATA",
+                "stream_id": 1,
+                "flags": [],
+                "payload": "more data"
               }
             ]
-          }
-        ]
-      },
-      {
-        "name": "Stream Identifiers",
-        "section": "5.1.1",
-        "cases": [
+          },
           {
-            "id": 29,
+            "id": 21,
+            "description": "An endpoint MUST NOT send frames other than PRIORITY on a closed stream.",
+            "client_frames": [
+              {
+                "type": "HEADERS",
+                "flags": ["END_HEADERS"],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
+                  }
+                }
+              },
+              {
+                "type": "RST_STREAM",
+                "stream_id": 1,
+                "error_code": 0
+              },
+              {
+                "type": "DATA",
+                "stream_id": 1,
+                "flags": [],
+                "payload": "test"
+              }
+            ]
+          },
+          {
+            "id": 22,
             "description": "Streams initiated by a client MUST use odd-numbered stream identifiers.",
             "client_frames": [
               {
@@ -626,7 +724,7 @@
             ]
           },
           {
-            "id": 30,
+            "id": 23,
             "description": "Streams initiated by a server MUST use even-numbered stream identifiers.",
             "client_frames": [
               {
@@ -673,6 +771,38 @@
                   }
                 },
                 "body": "Hello, World!"
+              }
+            ]
+          },
+          {
+            "id": 24,
+            "description": "The identifier of a newly established stream MUST be numerically greater than all streams that the initiating endpoint has opened or reserved.",
+            "client_frames": [
+              {
+                "type": "HEADERS",
+                "flags": ["END_HEADERS"],
+                "stream_id": 5,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
+                  }
+                }
+              },
+              {
+                "type": "HEADERS",
+                "flags": ["END_HEADERS"],
+                "stream_id": 3,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/other",
+                    "authority": "localhost"
+                  }
+                }
               }
             ]
           }

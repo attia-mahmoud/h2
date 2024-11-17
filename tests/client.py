@@ -310,8 +310,11 @@ class HTTP2Connection:
         """Send a DATA frame"""
         stream_id = frame.get('stream_id', 1)
         end_stream = 'END_STREAM' in frame.get('flags', [])
-        payload_size = frame.get('payload_size', 0)
-        data = b'X' * payload_size
+        if 'payload_size' in frame:
+            payload_size = frame['payload_size']
+            data = b'X' * payload_size
+        else:
+            data = frame.get('payload', b'')
         
         self.conn.send_data(
             stream_id=stream_id,

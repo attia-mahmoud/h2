@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import List, Tuple, Dict, Optional, Any
 import argparse
+import hpack
 
 # Create logs directory structure if it doesn't exist
 log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs', 'client')
@@ -280,18 +281,30 @@ class HTTP2Connection:
     def _send_headers_frame(self, frame: Dict) -> None:
         """Send a HEADERS frame"""
         stream_id = frame.get('stream_id', self.conn.get_next_available_stream_id())
-        end_stream = 'END_STREAM' in frame.get('flags', [])
+
+        encoder = hpack.Encoder()
         
         if frame.get('headers'):
             headers = self._format_headers(frame.get('headers'))
         else:
             headers = self._format_custom_headers(frame.get('custom_headers'))
-            
-        self.conn.send_headers(
-            stream_id=stream_id,
-            headers=headers,
-            end_stream=end_stream
+
+        header_block = encoder.encode(headers)
+
+        if frame.get('reserved_bit', 0):
+            stream_id |= 0x80000000  # Set highest bit
+
+        # Create frame header
+        frame_header = (
+            len(header_block).to_bytes(3, byteorder='big') +  # Length
+            b'\x01' +  # Type (1 for HEADERS)
+            b'\x04' +  # Flags (END_HEADERS)
+            stream_id.to_bytes(4, byteorder='big')  # Reserved bit + Stream ID
         )
+    
+        # Log and send
+        self.logger.info(f"Sending HEADERS frame with reserved bit set")
+        self.sock.sendall(frame_header + header_block)
 
     def _send_data_frame(self, frame: Dict) -> None:
         """Send a DATA frame"""

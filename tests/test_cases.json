@@ -470,6 +470,46 @@
                 "body": "Hello, World!"
               }
             ]
+          },
+          {
+            "id": 12,
+            "description": "A reserved 1-bit field. The semantics of this bit are undefined, and the bit MUST remain unset (0x00) when sending and MUST be ignored when receiving.",
+            "client_frames": [
+              {
+                "type": "HEADERS",
+                "flags": ["END_HEADERS"],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/",
+                    "authority": "localhost"
+                  },
+                  "regular_headers": {
+                    "user-agent": "test-client"
+                  }
+                },
+                "reserved_bit": 1
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "HEADERS",
+                "flags": ["END_STREAM"],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain",
+                    "content-length": "13"
+                  }
+                },
+                "body": "Hello, World!"
+              }
+            ]
           }
         ]
       },

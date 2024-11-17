@@ -232,6 +232,9 @@
           {
             "id": 5,
             "description": "SETTINGS frame MUST be the first frame the server sends in the HTTP/2 connection.",
+            "connection_settings": {
+              "skip_server_settings": true
+            },
             "client_frames": [
               {
                 "type": "SETTINGS",

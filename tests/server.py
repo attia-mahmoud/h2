@@ -111,7 +111,8 @@ class HTTP2Connection:
             validate_inbound_headers=False,
             validate_outbound_headers=False,
             normalize_inbound_headers=False,
-            normalize_outbound_headers=False
+            normalize_outbound_headers=False,
+            skip_settings=self.test_case.get('skip_server_settings', False)
         )
         self.conn = h2.connection.H2Connection(config=config)
         self.logger.debug("H2 connection initialized successfully")

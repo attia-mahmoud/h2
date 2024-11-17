@@ -105,6 +105,7 @@ class HTTP2Connection:
     def _initialize_connection(self) -> None:
         """Initialize H2 connection"""
         self.logger.debug("Initializing H2 connection")
+        connection_settings = self.test_case.get('connection_settings', {})
         config = h2.config.H2Configuration(
             client_side=False,
             header_encoding='utf-8',
@@ -112,7 +113,7 @@ class HTTP2Connection:
             validate_outbound_headers=False,
             normalize_inbound_headers=False,
             normalize_outbound_headers=False,
-            skip_settings=self.test_case.get('skip_server_settings', False)
+            skip_settings=connection_settings.get('skip_server_settings', False)
         )
         self.conn = h2.connection.H2Connection(config=config)
         self.logger.debug("H2 connection initialized successfully")

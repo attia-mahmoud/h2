@@ -106,7 +106,14 @@ class HTTP2Connection:
     def _initialize_connection(self) -> None:
         """Initialize H2 connection"""
         self.logger.debug("Initializing H2 connection")
-        config = h2.config.H2Configuration(client_side=False)
+        config = h2.config.H2Configuration(
+            client_side=False,
+            header_encoding='utf-8',
+            validate_inbound_headers=False,
+            validate_outbound_headers=False,
+            normalize_inbound_headers=False,
+            normalize_outbound_headers=False
+        )
         self.conn = h2.connection.H2Connection(config=config)
         self.logger.debug("H2 connection initialized successfully")
 
@@ -115,6 +122,32 @@ class HTTP2Connection:
         self.logger.info("Waiting for client preface...")
         preface = self.client_socket.recv(24)
         self.logger.debug(f"Received client preface: {preface}")
+
+    def _format_headers(self, headers_dict: Dict) -> List[Tuple[str, str]]:
+        self.logger.debug(f"Formatting headers: {headers_dict}")
+        formatted_headers = []
+        
+        # Handle pseudo-headers
+        if 'pseudo_headers' in headers_dict:
+            for name, value in headers_dict['pseudo_headers'].items():
+                # Ensure pseudo-header name starts with ':'
+                header_name = f":{name}" if not name.startswith(':') else name
+                formatted_headers.append((header_name, str(value)))
+                self.logger.debug(f"Added pseudo-header: {header_name}: {value}")
+        
+        # Handle regular headers
+        if 'regular_headers' in headers_dict:
+            for name, value in headers_dict['regular_headers'].items():
+                formatted_headers.append((name.lower(), str(value)))
+                self.logger.debug(f"Added regular header: {name}: {value}")
+        
+        self.logger.debug(f"Final formatted headers: {formatted_headers}")
+        return formatted_headers
+    
+    def _format_custom_headers(self, headers_dict: Dict) -> List[Tuple[str, str]]:
+        """Format custom headers from test case"""
+        self.logger.debug(f"Formatting custom headers: {headers_dict}")
+        return [(name.lower(), str(value)) for name, value in headers_dict.items()]
 
     def _send_server_frames(self) -> None:
         """Send frames specified in test case"""
@@ -390,7 +423,7 @@ class HTTP2Connection:
         self.logger.debug("Connection closed successfully")
 
 class HTTP2Server:
-    def __init__(self, host: str = 'localhost', port: int = 7700, json_path: str = 'test_cases.json'):
+    def __init__(self, host: str = 'localhost', port: int = 7700, json_path: str = 'tests/test_cases.json'):
         self.host = host
         self.port = port
         self.sock = None

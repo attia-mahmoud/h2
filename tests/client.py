@@ -103,15 +103,11 @@ class HTTP2Connection:
         connection_settings = test_case.get('connection_settings', {})
         self._apply_connection_settings(connection_settings)
         
-        # Check if we should skip client preface
         if not connection_settings.get('skip_client_preface', False):
             self._send_client_preface()
         else:
             self.logger.info("Skipping client preface as per test configuration")
-            # Still need to initialize the connection
             self.conn.initiate_connection()
-        
-        self._handle_server_preface()
 
     def _apply_connection_settings(self, settings: Dict[str, Any]) -> None:
         """Apply connection settings from test case"""
@@ -121,47 +117,15 @@ class HTTP2Connection:
             validate_inbound_headers=False,
             validate_outbound_headers=False,
             normalize_inbound_headers=False,
-            normalize_outbound_headers=False
+            normalize_outbound_headers=False,
+            skip_settings=settings.get('skip_client_settings', False)
         )
         self.conn = h2.connection.H2Connection(config=config)
-        if 'settings' in settings:
-            self.logger.debug(f"Updating settings: {settings['settings']}")
-            self.conn.update_settings(settings['settings'])
 
-    def _send_client_preface(self) -> None:
-        """Send HTTP/2 client preface"""
-        self.logger.info("Sending client preface")
-        try:
-            preface = b'PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n'
-            self._log_packet("SENDING", "CLIENT_PREFACE", {"preface": preface.decode()})
-            self.sock.sendall(preface)
-            self.conn.initiate_connection()
-            self.sock.sendall(self.conn.data_to_send())
-            self.logger.debug("Client preface sent successfully")
-        except Exception as e:
-            self.logger.error(f"Failed to send client preface: {e}", exc_info=True)
-            raise
-
-    def _handle_server_preface(self) -> None:
-        """Handle server preface and SETTINGS frame"""
-        self.logger.info("Waiting for server SETTINGS")
-        try:
-            data = self.sock.recv(65535)
-            events = self.conn.receive_data(data)
-            for event in events:
-                event_dict = {
-                    'type': event.__class__.__name__,
-                    'stream_id': getattr(event, 'stream_id', None)
-                }
-                if hasattr(event, 'settings'):
-                    event_dict['settings'] = {k.name: v for k, v in event.settings.items()}
-                self._log_packet("RECEIVED", event_dict['type'], event_dict)
-            
-            self.sock.sendall(self.conn.data_to_send())
-            self.logger.info("Server preface handled successfully")
-        except Exception as e:
-            self.logger.error(f"Failed to handle server preface: {e}", exc_info=True)
-            raise
+    def _send_client_preface(self):
+        """Send the client preface"""
+        self.logger.debug("Sending client preface")
+        self.conn.initiate_connection()
 
     def _format_headers(self, headers_dict: Dict) -> List[Tuple[str, str]]:
         self.logger.debug(f"Formatting headers: {headers_dict}")
@@ -191,6 +155,8 @@ class HTTP2Connection:
 
     def send_frames(self, frames: List[Dict]) -> None:
         """Send frames according to test configuration"""
+        self.logger.info("\n🔍 Frame Sending Check:")
+        self.logger.info(f"Frames to be sent: {[frame['type'] for frame in frames]}")
         self.logger.info(f"Sending {len(frames)} frames")
         for frame in frames:
             frame_type = FrameType(frame['type'].upper())

@@ -172,7 +172,8 @@ class H2Configuration:
                  split_outbound_cookies=False,
                  validate_inbound_headers=True,
                  normalize_inbound_headers=True,
-                 logger=None):
+                 logger=None,
+                 skip_settings=False):
         self.client_side = client_side
         self.header_encoding = header_encoding
         self.validate_outbound_headers = validate_outbound_headers
@@ -181,6 +182,7 @@ class H2Configuration:
         self.validate_inbound_headers = validate_inbound_headers
         self.normalize_inbound_headers = normalize_inbound_headers
         self.logger = logger or DummyLogger(__name__)
+        self.skip_settings = skip_settings
 
     @property
     def header_encoding(self):

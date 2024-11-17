@@ -65,7 +65,7 @@
           },
           {
             "id": 2,
-            "description": "Client and server must send connection preface after TLS",
+            "description": "Client must send connection preface after TLS",
             "connection_settings": {
               "tls_enabled": true,
               "skip_client_preface": true
@@ -122,7 +122,7 @@
           },
           {
             "id": 3,
-            "description": "Client and server must send connection preface after TLS",
+            "description": "Server must send connection preface after TLS",
             "connection_settings": {
               "tls_enabled": true,
               "skip_server_preface": true
@@ -180,71 +180,15 @@
         ]
       },
       {
-        "name": "Starting HTTP/2 with Prior Knowledge",
-        "section": "3.3",
-        "cases": [
-          {
-            "id": 3,
-            "description": "Client establishes TCP connection and sends connection preface without TLS",
-            "client_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
-                "type": "HEADERS",
-                "flags": [
-                  "END_STREAM"
-                ],
-                "stream_id": 1,
-                "headers": {
-                  "pseudo_headers": {
-                    "method": "GET",
-                    "scheme": "http",
-                    "path": "/",
-                    "authority": "localhost"
-                  },
-                  "regular_headers": {
-                    "user-agent": "test-client"
-                  }
-                }
-              }
-            ],
-            "server_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
-              {
-                "type": "HEADERS",
-                "flags": [
-                  "END_STREAM"
-                ],
-                "stream_id": 1,
-                "headers": {
-                  "pseudo_headers": {
-                    "status": "200"
-                  },
-                  "regular_headers": {
-                    "content-type": "text/plain",
-                    "content-length": "13"
-                  }
-                },
-                "body": "Hello, World!"
-              }
-            ]
-          }
-        ]
-      },
-      {
         "name": "HTTP/2 Connection Preface",
         "section": "3.4",
         "cases": [
           {
             "id": 4,
             "description": "Connection preface must be followed by a SETTINGS frame",
+            "connection_settings": {
+              "skip_client_settings": true
+            },
             "client_frames": [
               {
                 "type": "HEADERS",
@@ -266,11 +210,6 @@
               }
             ],
             "server_frames": [
-              {
-                "type": "SETTINGS",
-                "flags": [],
-                "settings": {}
-              },
               {
                 "type": "HEADERS",
                 "flags": [

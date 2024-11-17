@@ -1,6 +1,6 @@
 **Section 3.2 (Starting HTTP/2 for "https" URIs):**
    1. "The 'h2c' protocol identifier MUST NOT be sent by a client or selected by a server. the "h2c" protocol identifier describes a protocol that does not use TLS."
-   2. "Once TLS negotiation is complete, both the client and the server MUST send a connection preface."
+   2, 3. "Once TLS negotiation is complete, both the client and the server MUST send a connection preface."
 
 **Section 3.3 (Starting HTTP/2 with Prior Knowledge):**
    3. "A client that knows that a server supports HTTP/2 can establish a TCP connection and send the connection preface (Section 3.4) followed by HTTP/2 frames. Servers can identify these connections by the presence of the connection preface. This only aﬀects the establishment of HTTP/2 connections over cleartext TCP; HTTP/2 connections over TLS MUST use protocol negotiation in TLS [TLS-ALPN]. Likewise, the server MUST send a connection preface (Section 3.4)."

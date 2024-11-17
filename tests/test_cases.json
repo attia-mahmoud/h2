@@ -67,7 +67,65 @@
             "id": 2,
             "description": "Client and server must send connection preface after TLS",
             "connection_settings": {
-              "tls_enabled": true
+              "tls_enabled": true,
+              "skip_client_preface": true
+            },
+            "client_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "method": "GET",
+                    "scheme": "https",
+                    "path": "/",
+                    "authority": "localhost"
+                  },
+                  "regular_headers": {
+                    "user-agent": "test-client"
+                  }
+                }
+              }
+            ],
+            "server_frames": [
+              {
+                "type": "SETTINGS",
+                "flags": [],
+                "settings": {}
+              },
+              {
+                "type": "HEADERS",
+                "flags": [
+                  "END_STREAM"
+                ],
+                "stream_id": 1,
+                "headers": {
+                  "pseudo_headers": {
+                    "status": "200"
+                  },
+                  "regular_headers": {
+                    "content-type": "text/plain",
+                    "content-length": "13"
+                  }
+                },
+                "body": "Hello, World!"
+              }
+            ]
+          },
+          {
+            "id": 3,
+            "description": "Client and server must send connection preface after TLS",
+            "connection_settings": {
+              "tls_enabled": true,
+              "skip_server_preface": true
             },
             "client_frames": [
               {

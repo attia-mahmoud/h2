@@ -57,6 +57,14 @@ class HTTP2Connection:
         self.logger = logging.getLogger(f"{__name__}.HTTP2Connection")
         self.logger.info(f"Initializing HTTP2Connection to {host}:{port}")
 
+    def _log_packet(self, direction: str, frame_type: str, details: Dict[str, Any]) -> None:
+        """Log packet details in a prominent way"""
+        separator = "=" * 50
+        self.logger.info(f"\n{separator}")
+        self.logger.info(f"🔵 {direction} {frame_type} FRAME")
+        self.logger.info(f"📦 Details: {json.dumps(details, indent=2)}")
+        self.logger.info(separator)
+
     def setup(self, test_case: Dict[str, Any]) -> None:
         """Setup and initialize HTTP/2 connection"""
         self.logger.info("Setting up HTTP/2 connection")
@@ -92,8 +100,17 @@ class HTTP2Connection:
     def _initialize_connection(self, test_case: Dict[str, Any]) -> None:
         """Initialize HTTP/2 connection"""
         self.logger.info("Initializing HTTP/2 connection")
-        self._apply_connection_settings(test_case.get('connection_settings', {}))
-        self._send_client_preface()
+        connection_settings = test_case.get('connection_settings', {})
+        self._apply_connection_settings(connection_settings)
+        
+        # Check if we should skip client preface
+        if not connection_settings.get('skip_client_preface', False):
+            self._send_client_preface()
+        else:
+            self.logger.info("Skipping client preface as per test configuration")
+            # Still need to initialize the connection
+            self.conn.initiate_connection()
+        
         self._handle_server_preface()
 
     def _apply_connection_settings(self, settings: Dict[str, Any]) -> None:
@@ -116,6 +133,7 @@ class HTTP2Connection:
         self.logger.info("Sending client preface")
         try:
             preface = b'PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n'
+            self._log_packet("SENDING", "CLIENT_PREFACE", {"preface": preface.decode()})
             self.sock.sendall(preface)
             self.conn.initiate_connection()
             self.sock.sendall(self.conn.data_to_send())
@@ -130,7 +148,15 @@ class HTTP2Connection:
         try:
             data = self.sock.recv(65535)
             events = self.conn.receive_data(data)
-            self.logger.debug(f"Received server events: {events}")
+            for event in events:
+                event_dict = {
+                    'type': event.__class__.__name__,
+                    'stream_id': getattr(event, 'stream_id', None)
+                }
+                if hasattr(event, 'settings'):
+                    event_dict['settings'] = {k.name: v for k, v in event.settings.items()}
+                self._log_packet("RECEIVED", event_dict['type'], event_dict)
+            
             self.sock.sendall(self.conn.data_to_send())
             self.logger.info("Server preface handled successfully")
         except Exception as e:
@@ -168,7 +194,7 @@ class HTTP2Connection:
         self.logger.info(f"Sending {len(frames)} frames")
         for frame in frames:
             frame_type = FrameType(frame['type'].upper())
-            self.logger.debug(f"Processing frame of type: {frame_type}")
+            self._log_packet("SENDING", frame_type.value, frame)
             
             try:
                 if frame_type == FrameType.SETTINGS:
@@ -382,18 +408,28 @@ class HTTP2Connection:
                 events = self.conn.receive_data(data)
                 
                 for event in events:
+                    event_dict = {
+                        'type': event.__class__.__name__,
+                        'stream_id': getattr(event, 'stream_id', None)
+                    }
+                    
                     if isinstance(event, h2.events.ResponseReceived):
-                        self.logger.debug(f"Response headers received: {event.headers}")
+                        event_dict['headers'] = dict(event.headers)
+                        self._log_packet("RECEIVED", "HEADERS", event_dict)
                     elif isinstance(event, h2.events.DataReceived):
-                        self.logger.debug(f"Received data chunk of length: {len(event.data)}")
+                        event_dict['data_length'] = len(event.data)
+                        event_dict['data'] = event.data.decode('utf-8', errors='replace')
+                        self._log_packet("RECEIVED", "DATA", event_dict)
                         response_data += event.data
                         self.conn.acknowledge_received_data(
                             event.flow_controlled_length, 
                             event.stream_id
                         )
                     elif isinstance(event, h2.events.StreamEnded):
-                        self.logger.info("Stream ended")
+                        self._log_packet("RECEIVED", "END_STREAM", event_dict)
                         return response_data.decode('utf-8')
+                    else:
+                        self._log_packet("RECEIVED", event_dict['type'], event_dict)
                         
                 outbound_data = self.conn.data_to_send()
                 if outbound_data:
@@ -516,17 +552,17 @@ def main():
         logger.info(f"Starting HTTP/2 client with test ID: {args.test_id}")
         client = HTTP2Client()
         result = client.run_test(args.test_id)
-        logger.info(f"Test {'PASSED' if result.success else 'FAILED'}")
+        logger.info(f"Test {'COMPLETED' if result.completed else 'FAILED'}")
         if result.error:
             logger.error(f"Test error: {result.error}")
         logger.debug(f"Test response: {result.response}")
         
-        print(f"\nTest {'PASSED' if result.success else 'FAILED'}")
+        print(f"\nTest {'COMPLETED' if result.completed else 'FAILED'}")
         if result.error:
             print(f"Error: {result.error}")
         print(f"Response: {result.response}")
         
-        if not result.success:
+        if not result.completed:
             sys.exit(1)
     except Exception as e:
         logger.error(f"Fatal error: {e}", exc_info=True)

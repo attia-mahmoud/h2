@@ -96,7 +96,6 @@ class HTTP2Connection:
         
         try:
             self._initialize_connection()
-            self._handle_client_preface()
             self._send_server_frames()
         except Exception as e:
             self.logger.error(f"Error handling client: {e}", exc_info=True)
@@ -116,12 +115,6 @@ class HTTP2Connection:
         )
         self.conn = h2.connection.H2Connection(config=config)
         self.logger.debug("H2 connection initialized successfully")
-
-    def _handle_client_preface(self) -> None:
-        """Handle client preface"""
-        self.logger.info("Waiting for client preface...")
-        preface = self.client_socket.recv(24)
-        self.logger.debug(f"Received client preface: {preface}")
 
     def _format_headers(self, headers_dict: Dict) -> List[Tuple[str, str]]:
         self.logger.debug(f"Formatting headers: {headers_dict}")
@@ -152,27 +145,81 @@ class HTTP2Connection:
     def _send_server_frames(self) -> None:
         """Send frames specified in test case"""
         self.logger.info("Starting to send server frames")
-        for frame in self.test_case['server_frames']:
-            frame_type = FrameType(frame['type'].upper())
-            self.logger.debug(f"Processing frame of type: {frame_type}")
-            
-            if frame_type == FrameType.SETTINGS:
-                self._send_settings_frame(frame)
-            elif frame_type == FrameType.HEADERS:
-                self._send_headers_frame(frame)
-            elif frame_type == FrameType.DATA:
-                self._send_data_frame(frame)
-            elif frame_type == FrameType.PUSH_PROMISE:
-                self._send_push_promise_frame(frame)
-            elif frame_type == FrameType.RST_STREAM:
-                self._send_rst_stream_frame(frame)
-            elif frame_type == FrameType.GOAWAY:
-                self._send_goaway_frame(frame)
-            elif frame_type == FrameType.PING:
-                self._send_ping_frame(frame)
+        try:
+            for frame in self.test_case.get('server_frames', []):
+                frame_type = FrameType(frame['type'].upper())
+                self.logger.debug(f"Processing frame of type: {frame_type}")
+                
+                if frame_type == FrameType.SETTINGS:
+                    self._send_settings_frame(frame)
+                elif frame_type == FrameType.HEADERS:
+                    self._send_headers_frame(frame)
+                elif frame_type == FrameType.DATA:
+                    self._send_data_frame(frame)
+                elif frame_type == FrameType.PUSH_PROMISE:
+                    self._send_push_promise_frame(frame)
+                elif frame_type == FrameType.RST_STREAM:
+                    self._send_rst_stream_frame(frame)
+                elif frame_type == FrameType.GOAWAY:
+                    self._send_goaway_frame(frame)
+                elif frame_type == FrameType.PING:
+                    self._send_ping_frame(frame)
+                
+                # Send any pending data after each frame
+                outbound_data = self.conn.data_to_send()
+                if outbound_data:
+                    self.client_socket.sendall(outbound_data)
+                
+            # Wait for and process client frames before closing
+            self._process_client_frames()
+        except Exception as e:
+            self.logger.error(f"Error sending server frames: {e}", exc_info=True)
+            raise
+
+    def _process_client_frames(self) -> None:
+        """Process incoming client frames"""
+        self.logger.info("Processing client frames")
+        try:
+            while True:
+                data = self.client_socket.recv(65535)
+                if not data:
+                    break
+                
+                events = self.conn.receive_data(data)
+                for event in events:
+                    # Log received frames in a prominent way
+                    event_dict = {
+                        'type': event.__class__.__name__,
+                        'stream_id': getattr(event, 'stream_id', None),
+                    }
+                    
+                    if hasattr(event, 'headers'):
+                        event_dict['headers'] = dict(event.headers)
+                    if hasattr(event, 'data'):
+                        event_dict['data_length'] = len(event.data)
+                    if hasattr(event, 'error_code'):
+                        event_dict['error_code'] = event.error_code
+                    
+                    self._log_packet("RECEIVED", event_dict['type'], event_dict)
+                
+                outbound_data = self.conn.data_to_send()
+                if outbound_data:
+                    self.client_socket.sendall(outbound_data)
+        except Exception as e:
+            self.logger.error(f"Error processing client frames: {e}", exc_info=True)
+            raise
+
+    def _log_packet(self, direction: str, frame_type: str, details: Dict[str, Any]) -> None:
+        """Log packet details in a prominent way"""
+        separator = "=" * 50
+        self.logger.info(f"\n{separator}")
+        self.logger.info(f"🔵 {direction} {frame_type} FRAME")
+        self.logger.info(f"📦 Details: {json.dumps(details, indent=2)}")
+        self.logger.info(separator)
 
     def _send_settings_frame(self, frame: Dict) -> None:
         """Send a SETTINGS frame"""
+        self._log_packet("SENDING", "SETTINGS", frame)
         self.logger.debug(f"Preparing to send SETTINGS frame: {frame}")
         if frame.get('raw_payload', False) or 'stream_id' in frame:
             self.logger.info("Sending raw SETTINGS frame")
@@ -202,6 +249,7 @@ class HTTP2Connection:
 
     def _send_headers_frame(self, frame: Dict) -> None:
         """Send a HEADERS frame"""
+        self._log_packet("SENDING", "HEADERS", frame)
         if frame.get('raw_payload', False):
             headers = self._format_headers(frame.get('headers', {}))
             header_block = self.conn.encoder.encode(headers)
@@ -228,6 +276,7 @@ class HTTP2Connection:
 
     def _send_data_frame(self, frame: Dict) -> None:
         """Send a DATA frame"""
+        self._log_packet("SENDING", "DATA", frame)
         if frame.get('raw_payload', False):
             data = frame.get('data', '').encode('utf-8')
             
@@ -253,6 +302,7 @@ class HTTP2Connection:
 
     def _send_push_promise_frame(self, frame: Dict) -> None:
         """Send a PUSH_PROMISE frame"""
+        self._log_packet("SENDING", "PUSH_PROMISE", frame)
         if frame.get('raw_payload', False) or frame.get('stream_id', 0) == 0:
             headers = self._format_headers(frame.get('headers', {}))
             header_block = self.conn.encoder.encode(headers)
@@ -294,6 +344,7 @@ class HTTP2Connection:
 
     def _send_rst_stream_frame(self, frame: Dict) -> None:
         """Send a RST_STREAM frame"""
+        self._log_packet("SENDING", "RST_STREAM", frame)
         if frame.get('raw_payload', False):
             error_code = getattr(h2.errors.ErrorCodes, frame.get('error_code', 'PROTOCOL_ERROR'))
             payload = error_code.to_bytes(4, byteorder='big')
@@ -318,6 +369,7 @@ class HTTP2Connection:
 
     def _send_goaway_frame(self, frame: Dict) -> None:
         """Send a GOAWAY frame"""
+        self._log_packet("SENDING", "GOAWAY", frame)
         if frame.get('raw_payload', False) or 'stream_id' in frame:
             # Convert error code to int if string provided
             if isinstance(frame.get('error_code'), str):
@@ -364,6 +416,7 @@ class HTTP2Connection:
 
     def _send_ping_frame(self, frame: Dict) -> None:
         """Send a PING frame"""
+        self._log_packet("SENDING", "PING", frame)
         if frame.get('raw_payload', False) or 'stream_id' in frame:
             # Convert string payload to bytes if needed
             if isinstance(frame.get('payload'), str):
@@ -461,7 +514,7 @@ class HTTP2Server:
             self.logger.info("Setting up TLS...")
             try:
                 context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-                context.load_cert_chain(certfile="certs/server.crt", keyfile="certs/server.key")
+                context.load_cert_chain(certfile="tests/certs/server.crt", keyfile="tests/certs/server.key")
                 self.sock = context.wrap_socket(self.sock, server_side=True)
                 self.logger.info("TLS configured successfully")
             except Exception as e:

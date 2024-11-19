@@ -6,12 +6,12 @@ from utils import (
     setup_logging,
     create_ssl_context,
     create_socket,
-    format_headers,
     handle_socket_error,
     SSL_CONFIG,
     log_h2_frame,
     load_test_case,
-    CONFIG_SETTINGS
+    CONFIG_SETTINGS,
+    send_frame
 )
 import argparse
 
@@ -111,26 +111,11 @@ class HTTP2Server:
     
     def handle_event(self, event: h2.events.Event, client_socket: ssl.SSLSocket):
         """Handle H2 events"""
-        if isinstance(event, h2.events.RequestReceived):
-            response_headers = [
-                (':status', '200'),
-                ('content-type', 'text/plain'),
-                ('server', 'basic-h2-server')
-            ]
-            
-            response_data = b"Hello, HTTP/2 World!"
-            
-            self.conn.send_headers(
-                stream_id=event.stream_id,
-                headers=response_headers,
-            )
-            self.conn.send_data(
-                stream_id=event.stream_id,
-                data=response_data,
-                end_stream=True
-            )
-            
-            client_socket.sendall(self.conn.data_to_send())
+        if isinstance(event, h2.events.StreamEnded):
+            # Stream is complete, check if we need to send any frames
+            for frame in self.test_case.get('server_frames', []):
+                if frame.get('stream_id') == event.stream_id:
+                    send_frame(self.conn, client_socket, frame, logger)
 
 def main():
     parser = argparse.ArgumentParser(description='HTTP/2 Server')

@@ -20,17 +20,13 @@
                 ],
                 "stream_id": 1,
                 "headers": {
-                  "pseudo_headers": {
-                    "method": "GET",
-                    "scheme": "http",
-                    "path": "/",
-                    "authority": "localhost"
-                  },
-                  "regular_headers": {
+                    ":method": "GET",
+                    ":scheme": "http",
+                    ":path": "/",
+                    ":authority": "localhost",
                     "upgrade": "h2c",
                     "http2-settings": "AAMAAABkAAQAAP__",
                     "connection": "Upgrade, HTTP2-Settings"
-                  }
                 }
               }
             ]

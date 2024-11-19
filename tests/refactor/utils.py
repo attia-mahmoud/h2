@@ -1,13 +1,14 @@
 import ssl
 import logging
 import socket
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 import h2
 import json
 import h2.events
 import os
 from datetime import datetime
 import argparse
+import h2.connection
 
 # Configure shared logging
 def setup_logging(name: str) -> logging.Logger:
@@ -88,10 +89,6 @@ def create_socket(host: str, port: int, is_server: bool = False) -> socket.socke
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind((host, port))
     return sock
-
-def format_headers(headers: Dict[bytes, bytes]) -> str:
-    """Format headers for logging"""
-    return '\n'.join(f"{k.decode()}: {v.decode()}" for k, v in headers.items())
 
 def handle_socket_error(logger: logging.Logger, error: Exception, context: str):
     """Handle socket-related errors"""
@@ -178,3 +175,52 @@ CONFIG_SETTINGS = {
     'normalize_inbound_headers': False,
     'normalize_outbound_headers': False,
 }
+
+def format_headers(headers_dict: Dict) -> List[Tuple[str, str]]:
+    """Convert headers dictionary to h2 compatible format
+    Args:
+        headers_dict: Dictionary containing pseudo_headers and regular_headers
+    Returns:
+        List of (name, value) tuples in correct order
+    """
+    headers = []
+    
+    for name, value in headers_dict.items():
+        headers.append((name, str(value)))
+        
+    return headers
+
+def send_frame(conn: h2.connection.H2Connection, sock: socket.socket, 
+               frame_data: Dict, logger: logging.Logger) -> None:
+    """Send a single H2 frame
+    Args:
+        conn: H2Connection instance
+        sock: Socket to send data on
+        frame_data: Frame configuration from test case
+        logger: Logger instance
+    """
+    frame_type = frame_data.get('type')
+    
+    logger.info(f"Sending {frame_type} frame on stream {frame_data.get('stream_id')}")
+    
+    if frame_type == 'HEADERS':
+        send_headers_frame(conn, frame_data)
+    
+    # Send any pending data
+    outbound_data = conn.data_to_send()
+    if outbound_data:
+        sock.sendall(outbound_data)
+
+def send_headers_frame(conn: h2.connection.H2Connection, frame_data: Dict) -> None:
+    """Send a HEADERS frame"""
+    stream_id = frame_data.get('stream_id')
+    headers = format_headers(frame_data.get('headers', {}))
+    end_stream = 'END_STREAM' in frame_data.get('flags', [])
+    end_headers = 'END_HEADERS' in frame_data.get('flags', [])
+    
+    conn.send_headers(
+        stream_id=stream_id,
+        headers=headers,
+        end_stream=end_stream,
+        end_headers=end_headers
+    )

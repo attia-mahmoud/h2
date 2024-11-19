@@ -5,14 +5,15 @@ from utils import (
     setup_logging,
     create_ssl_context,
     create_socket,
-    format_headers,
     handle_socket_error,
     SSL_CONFIG,
     log_h2_frame,
     load_test_case,
-    CONFIG_SETTINGS
+    CONFIG_SETTINGS,
+    send_frame
 )
 import argparse
+import socket
 
 logger = setup_logging('client')
 
@@ -54,52 +55,52 @@ class HTTP2Client:
         except Exception as e:
             handle_socket_error(logger, e, "connect")
         
-    def send_request(self, path: str = '/') -> str:
-        """Send HTTP/2 request and return response"""
-        # Get TLS setting from test case, default to False
-        tls_enabled = self.test_case.get('tls_enabled', False)
-        scheme = 'https' if tls_enabled else 'http'
-        
-        request_headers = [
-            (':method', 'GET'),
-            (':path', path),
-            (':authority', f'{self.host}:{self.port}'),
-            (':scheme', scheme),
-            ('user-agent', 'basic-h2-client'),
-        ]
-        
-        stream_id = self.conn.get_next_available_stream_id()
-        self.conn.send_headers(stream_id, request_headers, end_stream=True)
-        self.sock.sendall(self.conn.data_to_send())
-        
-        return self._receive_response()
-    
-    def _receive_response(self) -> str:
-        """Process and return response"""
+    def send_frames(self):
+        """Send all frames specified in the test case and handle responses"""
+        for frame in self.test_case['client_frames']:
+            send_frame(self.conn, self.sock, frame, logger)
+            
+            # Check for server responses after sending each frame
+            self._receive_response()
+
+    def _receive_response(self, timeout: float = 0.1) -> str:
+        """Process and return response
+        Args:
+            timeout: How long to wait for a response in seconds
+        """
         response_data = b''
         
-        while True:
+        # Set socket to non-blocking with timeout
+        self.sock.settimeout(timeout)
+        
+        try:
             data = self.sock.recv(SSL_CONFIG.MAX_BUFFER_SIZE)
-            if not data:
-                break
+            if data:
+                events = self.conn.receive_data(data)
+                for event in events:
+                    # Log all events
+                    log_h2_frame(logger, "RECEIVED", event)
+                    
+                    if isinstance(event, h2.events.DataReceived):
+                        response_data += event.data
+                        self.conn.acknowledge_received_data(
+                            event.flow_controlled_length, 
+                            event.stream_id
+                        )
+                    elif isinstance(event, h2.events.StreamEnded):
+                        return response_data.decode()
                 
-            events = self.conn.receive_data(data)
-            for event in events:
-                # Log all events
-                log_h2_frame(logger, "RECEIVED", event)
-                
-                if isinstance(event, h2.events.DataReceived):
-                    response_data += event.data
-                    self.conn.acknowledge_received_data(
-                        event.flow_controlled_length, 
-                        event.stream_id
-                    )
-                elif isinstance(event, h2.events.StreamEnded):
-                    return response_data.decode()
-            
-            outbound_data = self.conn.data_to_send()
-            if outbound_data:
-                self.sock.sendall(outbound_data)
+                outbound_data = self.conn.data_to_send()
+                if outbound_data:
+                    self.sock.sendall(outbound_data)
+        except socket.timeout:
+            # No data received within timeout period
+            logger.debug("No response received within timeout")
+        except BlockingIOError:
+            # No data available to read at the moment
+            logger.debug("No data available to read")
+        
+        return response_data.decode() if response_data else ""
     
     def close(self):
         """Close the connection"""
@@ -115,8 +116,7 @@ def main():
         
     try:
         client.connect()
-        response = client.send_request('/')
-        logger.info(f"Response: {response}")
+        client.send_frames()
     except Exception as e:
         logger.error(f"Error: {e}", exc_info=True)
     finally:

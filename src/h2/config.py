@@ -173,7 +173,7 @@ class H2Configuration:
                  validate_inbound_headers=True,
                  normalize_inbound_headers=True,
                  logger=None,
-                 skip_settings=False,
+                 skip_initial_settings=False,
                  skip_settings_ack=False,
                  incorrect_connection_preface=False,
                  skip_connection_preface=False):
@@ -185,7 +185,7 @@ class H2Configuration:
         self.validate_inbound_headers = validate_inbound_headers
         self.normalize_inbound_headers = normalize_inbound_headers
         self.logger = logger or DummyLogger(__name__)
-        self.skip_settings = skip_settings
+        self.skip_initial_settings = skip_initial_settings
         self.skip_settings_ack = skip_settings_ack
         self.incorrect_connection_preface = incorrect_connection_preface
         self.skip_connection_preface = skip_connection_preface

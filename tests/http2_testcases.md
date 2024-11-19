@@ -1,12 +1,12 @@
 **Section 3.2 (Starting HTTP/2 for "https" URIs):**
    1. "The 'h2c' protocol identifier MUST NOT be sent by a client or selected by a server. the "h2c" protocol identifier describes a protocol that does not use TLS."
-   2, 3. "Once TLS negotiation is complete, both the client (2) and the server (3) MUST send a connection preface."
+   2. "Once TLS negotiation is complete, both the client and the server MUST send a connection preface."
 
 **Section 3.4 (HTTP/2 Connection Preface):**
-   4. "That is, the connection preface starts with the string "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n". This sequence MUST be followed by a SETTINGS frame (Section 6.5), which MAY be empty."
+   3. "That is, the connection preface starts with the string "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n". 
+   4. "This sequence MUST be followed by a SETTINGS frame (Section 6.5), which MAY be empty."
    5. "The server connection preface consists of a potentially empty SETTINGS frame (Section 6.5) that MUST be the first frame the server sends in the HTTP/2 connection."
    6, 7. "The SETTINGS frames received from a peer as part of the connection preface MUST be acknowledged (see Section 6.5.3) after sending the connection preface."
-   8. "Clients and servers MUST treat an invalid connection preface as a connection error (Section 5.4.1) of type PROTOCOL_ERROR."
 
 **Section 4.1 (Frame Format):**
    9. "Values greater than 214 (16,384) MUST NOT be sent unless the receiver has set a larger value for SETTINGS_MAX_FRAME_SIZE."

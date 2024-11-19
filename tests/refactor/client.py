@@ -43,7 +43,7 @@ class HTTP2Client:
             self.sock.connect((self.host, self.port))
 
             config_settings = CONFIG_SETTINGS.copy()
-            config_settings.update(self.test_case.get('connection_settings', {}))
+            config_settings.update(self.test_case.get('connection_settings_client', {}))
             
             # Initialize H2 connection
             config = h2.config.H2Configuration(client_side=True, **config_settings)

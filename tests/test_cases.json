@@ -33,9 +33,9 @@
           },
           {
             "id": 2,
-            "description": "Client must send connection preface after TLS",
+            "description": "Client must send connection preface after TLS establishment",
             "tls_enabled": true,
-            "connection_settings": {
+            "connection_settings_client": {
               "skip_connection_preface": true
             },
             "client_frames": [
@@ -46,44 +46,20 @@
                 ],
                 "stream_id": 1,
                 "headers": {
-                  "pseudo_headers": {
-                    "method": "GET",
-                    "scheme": "https",
-                    "path": "/",
-                    "authority": "localhost"
-                  },
-                  "regular_headers": {
+                    ":method": "GET",
+                    ":scheme": "https",
+                    ":path": "/",
+                    ":authority": "localhost",
                     "user-agent": "test-client"
-                  }
                 }
-              }
-            ],
-            "server_frames": [
-              {
-                "type": "HEADERS",
-                "flags": [
-                  "END_STREAM"
-                ],
-                "stream_id": 1,
-                "headers": {
-                  "pseudo_headers": {
-                    "status": "200"
-                  },
-                  "regular_headers": {
-                    "content-type": "text/plain",
-                    "content-length": "13"
-                  }
-                },
-                "body": "Hello, World!"
               }
             ]
           },
           {
             "id": 3,
-            "description": "Server must send connection preface after TLS",
+            "description": "the connection preface starts with the string: PRI * HTTP/2.0\\r\\n\\r\\nSM\\r\\n\\r\\n",
             "connection_settings": {
-              "tls_enabled": true,
-              "skip_server_preface": true
+              "incorrect_connection_preface": true
             },
             "client_frames": [
               {
@@ -93,35 +69,12 @@
                 ],
                 "stream_id": 1,
                 "headers": {
-                  "pseudo_headers": {
-                    "method": "GET",
-                    "scheme": "https",
-                    "path": "/",
-                    "authority": "localhost"
-                  },
-                  "regular_headers": {
+                    ":method": "GET",
+                    ":scheme": "https",
+                    ":path": "/",
+                    ":authority": "localhost",
                     "user-agent": "test-client"
-                  }
                 }
-              }
-            ],
-            "server_frames": [
-              {
-                "type": "HEADERS",
-                "flags": [
-                  "END_STREAM"
-                ],
-                "stream_id": 1,
-                "headers": {
-                  "pseudo_headers": {
-                    "status": "200"
-                  },
-                  "regular_headers": {
-                    "content-type": "text/plain",
-                    "content-length": "13"
-                  }
-                },
-                "body": "Hello, World!"
               }
             ]
           }
@@ -133,9 +86,9 @@
         "cases": [
           {
             "id": 4,
-            "description": "Connection preface must be followed by a SETTINGS frame",
-            "connection_settings": {
-              "skip_client_settings": true
+            "description": "Client preface must include a SETTINGS frame",
+            "connection_settings_client": {
+              "skip_initial_settings": true
             },
             "client_frames": [
               {
@@ -180,8 +133,8 @@
           {
             "id": 5,
             "description": "SETTINGS frame MUST be the first frame the server sends in the HTTP/2 connection.",
-            "connection_settings": {
-              "skip_server_settings": true
+            "connection_settings_server": {
+              "skip_initial_settings": true
             },
             "client_frames": [
               {
@@ -226,8 +179,8 @@
           {
             "id": 6,
             "description": "The SETTINGS frames received from a peer as part of the connection preface MUST be acknowledged (see Section 6.5.3) after sending the connection preface.",
-            "connection_settings": {
-              "skip_server_settings_ack": true
+            "connection_settings_server": {
+              "skip_initial_settings_ack": true
             },
             "client_frames": [
               {
@@ -272,8 +225,8 @@
           {
             "id": 7,
             "description": "The SETTINGS frames received from a peer as part of the connection preface MUST be acknowledged (see Section 6.5.3) after sending the connection preface.",
-            "connection_settings": {
-              "skip_client_settings_ack": true
+            "connection_settings_client": {
+              "skip_initial_settings_ack": true
             },
             "client_frames": [
               {

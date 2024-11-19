@@ -73,7 +73,7 @@ class HTTP2Server:
                 )
             
             config_settings = CONFIG_SETTINGS.copy()
-            config_settings.update(self.test_case.get('connection_settings', {}))
+            config_settings.update(self.test_case.get('connection_settings_server', {}))
             config = h2.config.H2Configuration(client_side=False, **config_settings)
             self.conn = h2.connection.H2Connection(config=config)
             self.conn.initiate_connection()

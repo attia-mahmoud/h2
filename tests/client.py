@@ -498,6 +498,10 @@ class HTTP2Client:
     def run_test(self, test_id: int) -> TestResult:
         """Run a single test case"""
         self.logger.info(f"Running test case {test_id}")
+        error_occurred = False
+        response = ""
+        error_msg = ""
+        
         try:
             test_case, suite = self.test_manager.find_test_case(test_id)
             if not test_case:
@@ -515,20 +519,28 @@ class HTTP2Client:
                 self.connection.sock.settimeout(timeout)
 
             self.connection.setup(test_case)
+
             
             try:
                 response = self._execute_test(test_case)
-                self.logger.info("Test completed successfully")
-                return TestResult(test_id, True, response)
+                self.logger.info("Test execution completed")
             except socket.timeout as e:
-                self.logger.warning(f"Socket timeout occurred: {e}")
-                return self._handle_timeout(test_case, test_id, e)
+                error_occurred = True
+                error_msg = f"Unexpected timeout: {str(e)}"
+                self.logger.error(error_msg)
+            except Exception as e:
+                error_occurred = True
+                error_msg = str(e)
+                self.logger.error(f"Error during test execution: {e}", exc_info=True)
             
         except Exception as e:
+            error_occurred = True
+            error_msg = str(e)
             self.logger.error(f"Test failed: {e}", exc_info=True)
-            return TestResult(test_id, False, "", str(e))
         finally:
             self.connection.close()
+        
+        return TestResult(test_id, not error_occurred, response, error_msg if error_occurred else None)
 
     def _execute_test(self, test_case: Dict[str, Any]) -> str:
         """Execute the test case and return the response"""
@@ -537,15 +549,6 @@ class HTTP2Client:
             self.connection.send_frames(test_case['client_frames'])
         
         return self.connection.receive_response()
-
-    def _handle_timeout(self, test_case: Dict[str, Any], test_id: int, error: socket.timeout) -> TestResult:
-        """Handle timeout scenarios"""
-        expected_response = test_case.get('expected_response', {})
-        if expected_response.get('type') == 'timeout':
-            self.logger.info("Timeout occurred as expected")
-            return TestResult(test_id, True, "Timeout as expected")
-        self.logger.error(f"Unexpected timeout: {error}")
-        return TestResult(test_id, False, "", f"Unexpected timeout: {str(error)}")
 
 def main():
     parser = argparse.ArgumentParser(description='Run HTTP/2 client')

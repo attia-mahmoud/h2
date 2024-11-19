@@ -419,25 +419,6 @@
                 "stream_id": 1,
                 "payload_size": 17000
               }
-            ],
-            "server_frames": [
-              {
-                "type": "HEADERS",
-                "flags": [
-                  "END_STREAM"
-                ],
-                "stream_id": 2,
-                "headers": {
-                  "pseudo_headers": {
-                    "status": "200"
-                  },
-                  "regular_headers": {
-                    "content-type": "text/plain",
-                    "content-length": "13"
-                  }
-                },
-                "body": "Hello, World!"
-              }
             ]
           },
           {

@@ -41,13 +41,6 @@ class FrameType(Enum):
     PING = "PING"
     GOAWAY = "GOAWAY"
 
-@dataclass
-class ServerResponse:
-    def __init__(self, headers: List[Tuple[str, str]], body: str):
-        self.headers = headers
-        self.body = body
-
-
 class TestCaseManager:
     def __init__(self, json_path: str):
         self.json_path = json_path

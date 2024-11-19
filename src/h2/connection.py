@@ -343,7 +343,7 @@ class H2Connection:
         self.max_inbound_frame_size = self.local_settings.max_frame_size
 
         # Buffer for incoming data.
-        self.incoming_buffer = FrameBuffer(server=not self.config.client_side)
+        self.incoming_buffer = FrameBuffer(server=not self.config.client_side, skip_connection_preface=self.config.skip_connection_preface)
 
         # A private variable to store a sequence of received header frames
         # until completion.
@@ -494,7 +494,7 @@ class H2Connection:
         if not self.config.skip_settings:
             self.state_machine.process_input(ConnectionInputs.SEND_SETTINGS)
         
-        if self.config.client_side:
+        if self.config.client_side and not self.config.skip_connection_preface:
             if self.config.incorrect_connection_preface:
                 preamble = b'PRI * HTTP/1.1\r\n\r\nSM\r\n\r\n'
             else:

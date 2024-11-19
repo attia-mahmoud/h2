@@ -56,6 +56,7 @@ class HTTP2Connection:
         self.port = port
         self.sock = None
         self.conn = None
+        self.received_packets = []
         self.logger = logging.getLogger(f"{__name__}.HTTP2Connection")
         self.logger.info(f"Initializing HTTP2Connection to {host}:{port}")
 
@@ -398,6 +399,86 @@ class HTTP2Connection:
             
             self.sock.sendall(frame_header + header_block)
 
+    def _decode_hex_data(self, hex_data: str) -> Dict[str, Any]:
+        """Decode hex data into a human-readable format"""
+        try:
+            raw_bytes = bytes.fromhex(hex_data)
+            
+            # Try to decode as HTTP/2 frame
+            if len(raw_bytes) >= 9:  # Minimum frame size is 9 bytes
+                length = int.from_bytes(raw_bytes[0:3], byteorder='big')
+                frame_type = raw_bytes[3]
+                flags = raw_bytes[4]
+                stream_id = int.from_bytes(raw_bytes[5:9], byteorder='big') & 0x7FFFFFFF
+                payload = raw_bytes[9:9+length] if len(raw_bytes) >= 9+length else raw_bytes[9:]
+                
+                frame_types = {
+                    0x0: "DATA",
+                    0x1: "HEADERS",
+                    0x2: "PRIORITY",
+                    0x3: "RST_STREAM",
+                    0x4: "SETTINGS",
+                    0x5: "PUSH_PROMISE",
+                    0x6: "PING",
+                    0x7: "GOAWAY",
+                    0x8: "WINDOW_UPDATE",
+                    0x9: "CONTINUATION"
+                }
+                
+                flag_meanings = {
+                    0x1: "END_STREAM",
+                    0x4: "END_HEADERS",
+                    0x8: "PADDED",
+                    0x20: "PRIORITY"
+                }
+                
+                active_flags = [flag_meanings[f] for f in flag_meanings if flags & f]
+                
+                decoded = {
+                    "frame": {
+                        "length": length,
+                        "type": frame_types.get(frame_type, f"Unknown(0x{frame_type:02x})"),
+                        "flags": active_flags,
+                        "stream_id": stream_id,
+                    }
+                }
+                
+                # Decode payload based on frame type
+                if frame_type == 0x4:  # SETTINGS
+                    settings = []
+                    for i in range(0, len(payload), 6):
+                        if i + 6 <= len(payload):
+                            identifier = int.from_bytes(payload[i:i+2], byteorder='big')
+                            value = int.from_bytes(payload[i+2:i+6], byteorder='big')
+                            settings.append({
+                                "identifier": identifier,
+                                "value": value
+                            })
+                    decoded["settings"] = settings
+                elif frame_type == 0x1:  # HEADERS
+                    decoded["payload"] = {
+                        "length": len(payload),
+                        "hex": payload.hex()
+                    }
+                elif frame_type == 0x0:  # DATA
+                    try:
+                        decoded["payload"] = {
+                            "text": payload.decode('utf-8', errors='replace'),
+                            "hex": payload.hex()
+                        }
+                    except:
+                        decoded["payload"] = {
+                            "hex": payload.hex()
+                        }
+                
+                return decoded
+            
+        except Exception as e:
+            return {
+                "error": f"Failed to decode hex data: {str(e)}",
+                "raw_hex": hex_data
+            }
+
     def receive_response(self) -> str:
         """Handle server response"""
         self.logger.info("Waiting for server response")
@@ -409,6 +490,16 @@ class HTTP2Connection:
                 if not data:
                     self.logger.debug("No more data received")
                     break
+                
+                # Store the raw received data
+                self.received_packets.append({
+                    'direction': "RECEIVED",
+                    'type': "RAW_DATA",
+                    'details': {
+                        'length': len(data),
+                        'hex_data': data.hex()
+                    }
+                })
                     
                 events = self.conn.receive_data(data)
                 
@@ -435,6 +526,13 @@ class HTTP2Connection:
                         return response_data.decode('utf-8')
                     else:
                         self._log_packet("RECEIVED", event_dict['type'], event_dict)
+                    
+                    # Store the parsed H2 event
+                    self.received_packets.append({
+                        'direction': "RECEIVED",
+                        'type': event_dict['type'],
+                        'details': event_dict
+                    })
                         
                 outbound_data = self.conn.data_to_send()
                 if outbound_data:
@@ -449,6 +547,31 @@ class HTTP2Connection:
         """Close the connection"""
         if self.sock:
             self.logger.info("Closing connection")
+            
+            # Print summary of all received packets
+            if self.received_packets:
+                separator = "=" * 80
+                self.logger.info(f"\n{separator}")
+                self.logger.info("📋 CONNECTION SUMMARY - ALL RECEIVED PACKETS")
+                self.logger.info(separator)
+                
+                for idx, packet in enumerate(self.received_packets, 1):
+                    self.logger.info(f"\n🔷 Packet #{idx}")
+                    self.logger.info(f"Type: {packet['type']}")
+                    
+                    # Add decoded information for RAW_DATA packets
+                    if packet['type'] == "RAW_DATA" and 'hex_data' in packet['details']:
+                        decoded_data = self._decode_hex_data(packet['details']['hex_data'])
+                        packet['details']['decoded'] = decoded_data
+                    
+                    self.logger.info(f"Details: {json.dumps(packet['details'], indent=2)}")
+                
+                self.logger.info(f"\n{separator}")
+                self.logger.info(f"Total packets received: {len(self.received_packets)}")
+                self.logger.info(separator)
+            else:
+                self.logger.info("No packets were received during this connection")
+            
             try:
                 self.sock.close()
                 self.logger.debug("Connection closed successfully")

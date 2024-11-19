@@ -15,7 +15,8 @@
               {
                 "type": "HEADERS",
                 "flags": [
-                  "END_STREAM"
+                  "END_STREAM",
+                  "END_HEADERS"
                 ],
                 "stream_id": 1,
                 "headers": {
@@ -37,7 +38,8 @@
               {
                 "type": "HEADERS",
                 "flags": [
-                  "END_STREAM"
+                  "END_STREAM",
+                  "END_HEADERS"
                 ],
                 "stream_id": 1,
                 "headers": {

@@ -90,7 +90,12 @@ class HTTP2Connection:
         
         try:
             self._initialize_connection()
+            # First wait for and validate client preface
+            self._wait_for_preface()
+            # Then send server frames
             self._send_server_frames()
+            # Finally process any remaining client frames
+            self._process_client_frames()
         except Exception as e:
             self.logger.error(f"Error handling client: {e}", exc_info=True)
         finally:
@@ -167,10 +172,42 @@ class HTTP2Connection:
                 if outbound_data:
                     self.client_socket.sendall(outbound_data)
                 
-            # Wait for and process client frames before closing
-            self._process_client_frames()
         except Exception as e:
             self.logger.error(f"Error sending server frames: {e}", exc_info=True)
+            raise
+
+    def _wait_for_preface(self) -> None:
+        """Wait for and validate client preface"""
+        self.logger.info("Waiting for client preface")
+        PREFACE = b'PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n'
+        buffer = b''
+        
+        try:
+            while len(buffer) < len(PREFACE):
+                data = self.client_socket.recv(len(PREFACE) - len(buffer))
+                if not data:
+                    raise Exception("Connection closed before receiving preface")
+                buffer += data
+            
+            if buffer == PREFACE:
+                self.received_packets.append({
+                    'direction': "RECEIVED",
+                    'type': "PREFACE",
+                    'details': {
+                        'length': len(PREFACE),
+                        'hex_data': PREFACE.hex(),
+                        'decoded': {
+                            'type': "HTTP/2 Preface",
+                            'value': "PRI * HTTP/2.0\\r\\n\\r\\nSM\\r\\n\\r\\n"
+                        }
+                    }
+                })
+                self.logger.info("Valid HTTP/2 preface received")
+            else:
+                raise Exception("Invalid HTTP/2 preface")
+            
+        except Exception as e:
+            self.logger.error(f"Error receiving preface: {e}")
             raise
 
     def _process_client_frames(self) -> None:
@@ -179,6 +216,7 @@ class HTTP2Connection:
         self.client_socket.settimeout(5.0)  # 5 second timeout
         
         MAX_FRAME_SIZE = 65535  # Standard HTTP/2 max frame size
+        buffer = b''
         
         try:
             while True:
@@ -187,49 +225,58 @@ class HTTP2Connection:
                     self.logger.info("Client closed connection")
                     break
                 
-                if len(data) >= MAX_FRAME_SIZE:
-                    error_msg = f"Received frame size ({len(data)}) exceeds maximum allowed size ({MAX_FRAME_SIZE})"
-                    self.logger.error(error_msg)
-                    return
+                buffer += data
                 
-                # Store the raw received data
-                self.received_packets.append({
-                    'direction': "RECEIVED",
-                    'type': "RAW_DATA",
-                    'details': {
-                        'length': len(data),
-                        'hex_data': data.hex()
-                    }
-                })
-                
-                self.logger.info(f"Received {len(data)} bytes from client")
-                events = self.conn.receive_data(data)
-                
-                # Process H2 events if any were generated
-                for event in events:
-                    event_dict = {
-                        'type': event.__class__.__name__,
-                        'stream_id': getattr(event, 'stream_id', None),
-                    }
+                # Process complete frames
+                while len(buffer) >= 9:  # Minimum frame header size
+                    frame_length = int.from_bytes(buffer[0:3], byteorder='big')
+                    total_frame_length = frame_length + 9  # Include header length
                     
-                    if hasattr(event, 'headers'):
-                        event_dict['headers'] = dict(event.headers)
-                    if hasattr(event, 'data'):
-                        event_dict['data_length'] = len(event.data)
-                    if hasattr(event, 'error_code'):
-                        event_dict['error_code'] = event.error_code
+                    if len(buffer) < total_frame_length:
+                        break  # Wait for more data
                     
-                    self._log_packet("RECEIVED", event_dict['type'], event_dict)
-                    # Store the parsed H2 event
+                    frame_data = buffer[:total_frame_length]
+                    buffer = buffer[total_frame_length:]
+                    
+                    # Store the raw frame
                     self.received_packets.append({
                         'direction': "RECEIVED",
-                        'type': event_dict['type'],
-                        'details': event_dict
+                        'type': "RAW_DATA",
+                        'details': {
+                            'length': len(frame_data),
+                            'hex_data': frame_data.hex()
+                        }
                     })
-                
-                outbound_data = self.conn.data_to_send()
-                if outbound_data:
-                    self.client_socket.sendall(outbound_data)
+                    
+                    self.logger.info(f"Received {len(frame_data)} bytes from client")
+                    events = self.conn.receive_data(frame_data)
+                    
+                    for event in events:
+                        event_dict = {
+                            'type': event.__class__.__name__,
+                            'stream_id': getattr(event, 'stream_id', None),
+                        }
+                        
+                        if hasattr(event, 'headers'):
+                            event_dict['headers'] = dict(event.headers)
+                        if hasattr(event, 'data'):
+                            event_dict['data_length'] = len(event.data)
+                        if hasattr(event, 'error_code'):
+                            event_dict['error_code'] = event.error_code
+                        
+                        self._log_packet("RECEIVED", event_dict['type'], event_dict)
+                        self.received_packets.append({
+                            'direction': "RECEIVED",
+                            'type': event_dict['type'],
+                            'details': event_dict
+                        })
+                    
+                    outbound_data = self.conn.data_to_send()
+                    if outbound_data:
+                        self.client_socket.sendall(outbound_data)
+                    
+        except socket.timeout:
+            self.logger.info("Client frame processing timed out")
         except Exception as e:
             self.logger.error(f"Error processing client frames: {e}", exc_info=True)
             raise

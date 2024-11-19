@@ -7,6 +7,7 @@ import json
 import h2.events
 import os
 from datetime import datetime
+import argparse
 
 # Configure shared logging
 def setup_logging(name: str) -> logging.Logger:
@@ -142,3 +143,38 @@ def log_h2_frame(logger: logging.Logger, direction: str, event: Any) -> None:
         logger.info(f"Exclusive: {event.exclusive}")
         
     logger.info(separator)
+
+def load_test_case(logger: logging.Logger, test_id: int) -> Optional[Dict]:
+    """Load a specific test case by ID from the test cases file"""
+    try:
+        with open('tests/test_cases.json', 'r') as f:
+            test_data = json.load(f)
+            
+        # Search through all test suites for the specified test ID
+        for test_suite in test_data['test_suites']:
+            for test_case in test_suite['cases']:
+                if test_case['id'] == test_id:
+                    logger.info(f"\nLoaded test case {test_id}:")
+                    logger.info(f"Suite: {test_suite['name']}")
+                    logger.info(f"Section: {test_suite['section']}")
+                    logger.info(f"Description: {test_case['description']}\n")
+                    return test_case
+                    
+        logger.error(f"Test case with ID {test_id} not found")
+        return None
+        
+    except FileNotFoundError:
+        logger.error("test_cases.json file not found")
+        return None
+    except json.JSONDecodeError:
+        logger.error("Error parsing test_cases.json")
+        return None
+    
+# Default H2Configuration settings
+CONFIG_SETTINGS = {
+    'header_encoding': 'utf-8',
+    'validate_inbound_headers': False,
+    'validate_outbound_headers': False,
+    'normalize_inbound_headers': False,
+    'normalize_outbound_headers': False,
+}

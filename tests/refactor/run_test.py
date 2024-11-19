@@ -5,6 +5,7 @@ import os
 import signal
 import logging
 from datetime import datetime
+import argparse
 
 # Configure logging
 logging.basicConfig(
@@ -31,14 +32,18 @@ def format_output(output: bytes, error: bytes) -> str:
     return '\n'.join(result)
 
 def run_server_client():
+    parser = argparse.ArgumentParser(description='HTTP/2 Test Runner')
+    parser.add_argument('--test-id', type=int, help='Test case ID to run', required=True)
+    args = parser.parse_args()
+
     server_process = None
     client_process = None
     
     try:
-        # Start the server process
-        logger.info("Starting HTTP/2 server...")
+        # Start the server process with test ID
+        logger.info(f"Starting HTTP/2 server with test ID {args.test_id}...")
         server_process = subprocess.Popen(
-            [sys.executable, 'tests/refactor/server.py'],
+            [sys.executable, 'tests/refactor/server.py', '--test-id', str(args.test_id)],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
@@ -46,10 +51,10 @@ def run_server_client():
         # Wait for server to start
         time.sleep(2)
         
-        # Start the client process
-        logger.info("Starting HTTP/2 client...")
+        # Start the client process with test ID
+        logger.info(f"Starting HTTP/2 client with test ID {args.test_id}...")
         client_process = subprocess.Popen(
-            [sys.executable, 'tests/refactor/client.py'],
+            [sys.executable, 'tests/refactor/client.py', '--test-id', str(args.test_id)],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )

@@ -58,9 +58,9 @@
           {
             "id": 2,
             "description": "Client must send connection preface after TLS",
+            "tls_enabled": true,
             "connection_settings": {
-              "tls_enabled": true,
-              "skip_client_preface": true
+              "skip_connection_preface": true
             },
             "client_frames": [
               {

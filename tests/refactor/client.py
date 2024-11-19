@@ -8,17 +8,21 @@ from utils import (
     format_headers,
     handle_socket_error,
     SSL_CONFIG,
-    log_h2_frame
+    log_h2_frame,
+    load_test_case,
+    CONFIG_SETTINGS
 )
+import argparse
 
 logger = setup_logging('client')
 
 class HTTP2Client:
-    def __init__(self, host: str = 'localhost', port: int = 8443):
+    def __init__(self, host: str = 'localhost', port: int = 8443, test_case: dict = None):
         self.host = host
         self.port = port
         self.sock = None
         self.conn = None
+        self.test_case = test_case
         
     def connect(self):
         """Establish HTTP/2 connection with server"""
@@ -30,9 +34,12 @@ class HTTP2Client:
                 server_hostname=self.host
             )
             self.sock.connect((self.host, self.port))
+
+            config_settings = CONFIG_SETTINGS.copy()
+            config_settings.update(self.test_case.get('connection_settings', {}))
             
             # Initialize H2 connection
-            config = h2.config.H2Configuration(client_side=True, incorrect_connection_preface=True)
+            config = h2.config.H2Configuration(client_side=True, **config_settings)
             self.conn = h2.connection.H2Connection(config=config)
             self.conn.initiate_connection()
             
@@ -90,7 +97,12 @@ class HTTP2Client:
             self.sock.close()
 
 def main():
-    client = HTTP2Client()
+    parser = argparse.ArgumentParser(description='HTTP/2 Client')
+    parser.add_argument('--test-id', type=int, help='Test case ID to run')
+    args = parser.parse_args()
+
+    client = HTTP2Client(test_case=load_test_case(logger, args.test_id))
+        
     try:
         client.connect()
         response = client.send_request('/')

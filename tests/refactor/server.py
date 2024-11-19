@@ -62,6 +62,16 @@ class HTTP2Server:
     def handle_connection(self, client_socket: ssl.SSLSocket, address: tuple):
         """Handle a single client connection"""
         try:
+            # Get TLS setting from test case, default to False
+            tls_enabled = self.test_case.get('tls_enabled', False)
+            
+            if tls_enabled:
+                ssl_context = create_ssl_context(is_client=False)
+                client_socket = ssl_context.wrap_socket(
+                    client_socket,
+                    server_side=True
+                )
+            
             config_settings = CONFIG_SETTINGS.copy()
             config_settings.update(self.test_case.get('connection_settings', {}))
             config = h2.config.H2Configuration(client_side=False, **config_settings)

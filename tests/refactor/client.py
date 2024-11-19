@@ -29,10 +29,16 @@ class HTTP2Client:
         try:
             # Create and configure socket
             self.sock = create_socket(self.host, self.port)
-            self.sock = create_ssl_context(is_client=True).wrap_socket(
-                self.sock,
-                server_hostname=self.host
-            )
+            
+            # Get TLS setting from test case, default to False
+            tls_enabled = self.test_case.get('tls_enabled', False)
+            
+            if tls_enabled:
+                self.sock = create_ssl_context(is_client=True).wrap_socket(
+                    self.sock,
+                    server_hostname=self.host
+                )
+            
             self.sock.connect((self.host, self.port))
 
             config_settings = CONFIG_SETTINGS.copy()
@@ -50,11 +56,15 @@ class HTTP2Client:
         
     def send_request(self, path: str = '/') -> str:
         """Send HTTP/2 request and return response"""
+        # Get TLS setting from test case, default to False
+        tls_enabled = self.test_case.get('tls_enabled', False)
+        scheme = 'https' if tls_enabled else 'http'
+        
         request_headers = [
             (':method', 'GET'),
             (':path', path),
             (':authority', f'{self.host}:{self.port}'),
-            (':scheme', 'https'),
+            (':scheme', scheme),
             ('user-agent', 'basic-h2-client'),
         ]
         

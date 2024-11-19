@@ -33,26 +33,6 @@
                   }
                 }
               }
-            ],
-            "server_frames": [
-              {
-                "type": "HEADERS",
-                "flags": [
-                  "END_STREAM",
-                  "END_HEADERS"
-                ],
-                "stream_id": 1,
-                "headers": {
-                  "pseudo_headers": {
-                    "status": "200"
-                  },
-                  "regular_headers": {
-                    "content-type": "text/plain",
-                    "content-length": "13"
-                  }
-                },
-                "body": "Hello, World!"
-              }
             ]
           },
           {

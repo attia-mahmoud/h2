@@ -106,7 +106,7 @@ class HTTP2Server:
                        f"Last Stream ID: {event.last_stream_id}")
                 return  # Exit immediately without trying to send more data
             
-            if isinstance(event, h2.events.StreamEnded):
+            if isinstance(event, h2.events.StreamEnded) or isinstance(event, h2.events.StreamReset):
                 # Only send response frames if we haven't received GOAWAY
                 if not self.conn.state_machine.state == h2.connection.ConnectionState.CLOSED:
                     for frame in self.test_case.get('server_frames', []):

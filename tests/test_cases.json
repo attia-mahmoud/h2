@@ -151,52 +151,45 @@
     ]
   },
   {
-    "id": 24,
+    "id": 13,
     "description": "The identifier of a newly established stream MUST be numerically greater than all streams that the initiating endpoint has opened or reserved.",
     "client_frames": [
       {
         "type": "HEADERS",
-        "flags": ["END_HEADERS"],
-        "stream_id": 5,
-        "headers": {
-          "pseudo_headers": {
-            "method": "GET",
-            "scheme": "http",
-            "path": "/",
-            "authority": "localhost"
-          }
-        }
+        "flags": {
+          "END_STREAM": false
+        },
+        "stream_id": 5
       },
       {
         "type": "HEADERS",
-        "flags": ["END_HEADERS"],
-        "stream_id": 3,
-        "headers": {
-          "pseudo_headers": {
-            "method": "GET",
-            "scheme": "http",
-            "path": "/other",
-            "authority": "localhost"
-          }
-        }
+        "stream_id": 3
       }
     ]
   },
   {
-    "id": 40,
+    "id": 14,
     "description": "An endpoint MUST NOT send a RST_STREAM in response to a RST_STREAM frame",
     "client_frames": [
       {
+        "type": "HEADERS",
+        "flags": {
+          "END_STREAM": false
+        },
+        "stream_id": 1
+      },
+      {
         "type": "RST_STREAM",
-        "stream_id": 1,
-        "error_code": "CANCEL"
+        "flags": {
+          "END_STREAM": true
+        },
+        "stream_id": 1
       }
     ],
     "server_frames": [
       {
         "type": "RST_STREAM",
-        "stream_id": 1,
-        "error_code": "CANCEL"
+        "stream_id": 1
       }
     ]
   },

@@ -11,7 +11,7 @@ import argparse
 import h2.connection
 from hyperframe.frame import (
     HeadersFrame, DataFrame, GoAwayFrame, WindowUpdateFrame, 
-    PingFrame, SettingsFrame
+    PingFrame, SettingsFrame, RstStreamFrame
 )
 
 # Configure shared logging
@@ -210,6 +210,8 @@ def send_frame(conn: h2.connection.H2Connection, sock: socket.socket,
         send_data_frame(conn, frame_data)
     elif frame_type == 'UNKNOWN':
         send_unknown_frame(sock, frame_data)
+    elif frame_type == 'RST_STREAM':
+        send_rst_stream_frame(conn, sock, frame_data)
     
     # Send any pending data
     outbound_data = conn.data_to_send()
@@ -265,7 +267,6 @@ def send_headers_frame(conn: h2.connection.H2Connection, sock, frame_data: Dict,
             headers=headers,
             end_stream=end_stream
         )
-    print(f"Sent HEADERS frame with stream ID {stream_id}")
 
 def send_data_frame(conn: h2.connection.H2Connection, frame_data: Dict) -> None:
     """Send a DATA frame"""
@@ -305,3 +306,11 @@ def send_unknown_frame(sock: socket.socket, frame_data: Dict) -> None:
             
     # Send raw frame
     sock.sendall(header + payload)
+
+def send_rst_stream_frame(conn: h2.connection.H2Connection, sock: socket.socket, frame_data: Dict) -> None:
+    """Send a RST_STREAM frame"""
+    stream_id = frame_data.get('stream_id', 1)
+    rsf = RstStreamFrame(stream_id)
+    rsf.error_code = 0
+    frame = rsf.serialize()
+    sock.sendall(frame)

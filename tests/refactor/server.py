@@ -101,11 +101,24 @@ class HTTP2Server:
     
     def handle_event(self, event: h2.events.Event, client_socket: ssl.SSLSocket):
         """Handle H2 events"""
-        if isinstance(event, h2.events.StreamEnded):
-            # Stream is complete, check if we need to send any frames
-            for frame in self.test_case.get('server_frames', []):
-                if frame.get('stream_id') == event.stream_id:
-                    send_frame(self.conn, client_socket, frame, logger)
+        try:
+            if isinstance(event, h2.events.StreamEnded):
+                # Stream is complete, check if we need to send any frames
+                for frame in self.test_case.get('server_frames', []):
+                    if frame.get('stream_id') == event.stream_id:
+                        send_frame(self.conn, client_socket, frame)
+                    
+            elif isinstance(event, h2.events.ConnectionTerminated):
+                # Client sent GOAWAY, acknowledge it and prepare to close
+                logger.info(f"Received GOAWAY frame. Error code: {event.error_code}, "
+                           f"Last Stream ID: {event.last_stream_id}")
+                
+                # Send our own GOAWAY if we haven't already
+                self.conn.close_connection()
+                client_socket.sendall(self.conn.data_to_send())
+                    
+        except Exception as e:
+            handle_socket_error(logger, e, "handle_event")
 
 def main():
     parser = argparse.ArgumentParser(description='HTTP/2 Server')

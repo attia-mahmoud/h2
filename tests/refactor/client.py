@@ -14,6 +14,7 @@ from utils import (
 )
 import argparse
 import socket
+import time
 
 logger = setup_logging('client')
 
@@ -57,13 +58,27 @@ class HTTP2Client:
         
     def send_frames(self):
         """Send all frames specified in the test case and handle responses"""
-        for frame in self.test_case['client_frames']:
-            send_frame(self.conn, self.sock, frame, logger)
+        try:
+            for frame in self.test_case['client_frames']:
+                send_frame(self.conn, self.sock, frame)
+                
+                # For unknown frames, add a small delay
+                if frame.get('type') == 'UNKNOWN':
+                    time.sleep(0.1)
+                
+                # Try to receive a response with timeout
+                response = self._receive_response(timeout=0.5)
+                if response:
+                    logger.info(f"Received response: {response}")
             
-            # Check for server responses after sending each frame
-            self._receive_response()
+        except Exception as e:
+            logger.error(f"Error sending frames: {e}")
+            raise
+        finally:
+            # Always close gracefully
+            self.close()
 
-    def _receive_response(self, timeout: float = 0.1) -> str:
+    def _receive_response(self, timeout: float = 0.5) -> str:
         """Process and return response
         Args:
             timeout: How long to wait for a response in seconds
@@ -103,9 +118,45 @@ class HTTP2Client:
         return response_data.decode() if response_data else ""
     
     def close(self):
-        """Close the connection"""
-        if self.sock:
-            self.sock.close()
+        """Close the connection gracefully"""
+        if self.conn and self.sock:
+            try:
+                # Only send GOAWAY if connection is still active
+                if not self.conn.state_machine.state == h2.connection.ConnectionState.CLOSED:
+                    logger.info("Sending GOAWAY frame")
+                    self.conn.close_connection()
+                    self.sock.sendall(self.conn.data_to_send())
+                    
+                    # Wait briefly for any final messages
+                    try:
+                        self.sock.settimeout(0.1)
+                        # Only receive data if connection isn't closed
+                        while not self.conn.state_machine.state == h2.connection.ConnectionState.CLOSED:
+                            data = self.sock.recv(SSL_CONFIG.MAX_BUFFER_SIZE)
+                            if not data:
+                                break
+                            try:
+                                events = self.conn.receive_data(data)
+                                for event in events:
+                                    log_h2_frame(logger, "RECEIVED", event)
+                                    if isinstance(event, h2.events.ConnectionTerminated):
+                                        logger.info("Received GOAWAY from server")
+                                        return
+                            except h2.exceptions.ProtocolError as e:
+                                logger.debug(f"Protocol error during close: {e}")
+                                break
+                    except socket.timeout:
+                        logger.debug("No more data received during close")
+                    except Exception as e:
+                        logger.debug(f"Error during final read: {e}")
+                    
+            except Exception as e:
+                logger.debug(f"Error during connection close: {e}")
+            finally:
+                logger.info("Closing socket connection")
+                self.sock.close()
+                self.sock = None
+                self.conn = None
 
 def main():
     parser = argparse.ArgumentParser(description='HTTP/2 Client')

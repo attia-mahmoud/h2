@@ -190,7 +190,7 @@ def format_headers(headers_dict: Dict) -> List[Tuple[str, str]]:
     return headers
 
 def send_frame(conn: h2.connection.H2Connection, sock: socket.socket, 
-               frame_data: Dict, logger: logging.Logger) -> None:
+               frame_data: Dict) -> None:
     """Send a single H2 frame
     Args:
         conn: H2Connection instance
@@ -200,10 +200,12 @@ def send_frame(conn: h2.connection.H2Connection, sock: socket.socket,
     """
     frame_type = frame_data.get('type')
     
-    logger.info(f"Sending {frame_type} frame on stream {frame_data.get('stream_id')}")
-    
     if frame_type == 'HEADERS':
         send_headers_frame(conn, frame_data)
+    elif frame_type == 'DATA':
+        send_data_frame(conn, frame_data)
+    elif frame_type == 'UNKNOWN':
+        send_unknown_frame(sock, frame_data)
     
     # Send any pending data
     outbound_data = conn.data_to_send()
@@ -221,3 +223,42 @@ def send_headers_frame(conn: h2.connection.H2Connection, frame_data: Dict) -> No
         headers=headers,
         end_stream='END_STREAM' in flags
     )
+
+def send_data_frame(conn: h2.connection.H2Connection, frame_data: Dict) -> None:
+    """Send a DATA frame"""
+    stream_id = frame_data.get('stream_id')
+    flags = frame_data.get('flags', [])
+    payload = frame_data.get('payload', '')
+    payload_size = frame_data.get('payload_size')
+    
+    if payload_size and not payload:
+        payload = b'x' * payload_size
+    elif isinstance(payload, str):
+        payload = payload.encode('utf-8')
+    
+    conn.send_data(
+        stream_id=stream_id,
+        data=payload,
+        end_stream='END_STREAM' in flags
+    )
+
+def send_unknown_frame(sock: socket.socket, frame_data: Dict) -> None:
+    """Send an UNKNOWN frame"""
+    payload = frame_data.get('payload', '').encode('utf-8')
+    frame_type_id = frame_data.get('frame_type_id')
+    flags = frame_data.get('flags', [])
+    flags_byte = sum(1 << i for i, flag in enumerate(flags))
+    stream_id = frame_data.get('stream_id')
+    
+    # Frame header format:
+    # Length (24 bits) | Type (8 bits) | Flags (8 bits) | R (1 bit) | Stream ID (31 bits)
+    length = len(payload)
+    header = (
+        length.to_bytes(3, byteorder='big') +  # Length
+        frame_type_id.to_bytes(1, byteorder='big') +  # Type
+        flags_byte.to_bytes(1, byteorder='big') +  # Flags
+        stream_id.to_bytes(4, byteorder='big')  # R bit is 0 + Stream ID
+    )
+            
+    # Send raw frame
+    sock.sendall(header + payload)

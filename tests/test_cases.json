@@ -225,8 +225,8 @@
     "server_frames": [
       {
         "type": "HEADERS",
-        "raw_payload": true,
-        "stream_id": 2
+        "raw_frame": true,
+        "stream_id": 1
       }
     ]
   },

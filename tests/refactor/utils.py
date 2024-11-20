@@ -232,7 +232,7 @@ def send_headers_frame(conn: h2.connection.H2Connection, sock, frame_data: Dict,
     flags = frame_data.get('flags', {})
     end_stream = flags.get('END_STREAM', True)
     
-    if frame_data.get('reserved_bit'):
+    if frame_data.get('reserved_bit') or frame_data.get('raw_frame'):
         # Get encoded headers data
         encoded_headers = conn.encoder.encode(headers)
         
@@ -274,10 +274,10 @@ def send_data_frame(conn: h2.connection.H2Connection, frame_data: Dict) -> None:
     """Send a DATA frame"""
     stream_id = frame_data.get('stream_id', 1)
     flags = frame_data.get('flags', {})
-    payload = frame_data.get('payload', '')
+    payload = frame_data.get('payload', 'test')
     payload_size = frame_data.get('payload_size', None)
     
-    if payload_size and not payload:
+    if payload_size:
         payload = b'x' * payload_size
     elif isinstance(payload, str):
         payload = payload.encode('utf-8')

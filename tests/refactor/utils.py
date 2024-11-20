@@ -214,6 +214,8 @@ def send_frame(conn: h2.connection.H2Connection, sock: socket.socket,
         send_rst_stream_frame(conn, sock, frame_data)
     elif frame_type == 'PRIORITY':
         send_priority_frame(conn, sock, frame_data)
+    elif frame_type == 'SETTINGS':
+        send_settings_frame(conn, sock, frame_data)
     
     # Send any pending data
     outbound_data = conn.data_to_send()
@@ -312,9 +314,21 @@ def send_unknown_frame(sock: socket.socket, frame_data: Dict) -> None:
 def send_rst_stream_frame(conn: h2.connection.H2Connection, sock: socket.socket, frame_data: Dict) -> None:
     """Send a RST_STREAM frame"""
     stream_id = frame_data.get('stream_id', 1)
-    rsf = RstStreamFrame(stream_id)
-    rsf.error_code = 0
-    frame = rsf.serialize()
+    if frame_data.get('payload_length'):
+        payload_length = frame_data.get('payload_length', 4)  # Default to valid length of 4
+        payload = b'\x00' * payload_length
+        header = (
+            payload_length.to_bytes(3, byteorder='big') +  # Length
+            b'\x03' +  # Type (0x3 for RST_STREAM)
+            b'\x00' +  # Flags (none for RST_STREAM)
+            stream_id.to_bytes(4, byteorder='big')  # Stream ID
+        )
+        frame = header + payload
+    else:
+        rsf = RstStreamFrame(stream_id)
+        rsf.error_code = 0
+        frame = rsf.serialize()
+        
     sock.sendall(frame)
 
 def send_priority_frame(conn, sock, frame_data):
@@ -327,3 +341,56 @@ def send_priority_frame(conn, sock, frame_data):
 
     frame = frame.serialize()
     sock.sendall(frame)
+
+def send_settings_frame(conn: h2.connection.H2Connection, sock: socket.socket, frame_data: Dict) -> None:
+    """Send a SETTINGS frame with optional stream ID"""
+    settings = frame_data.get('settings', {})
+    flags = frame_data.get('flags', [])
+    stream_id = frame_data.get('stream_id', 0)  # Default to 0 as per spec
+    
+    # If we want to bypass h2 validation and send raw frame
+    if stream_id != 0 or frame_data.get('bypass_validation', False):
+        # Convert settings to bytes
+        settings_payload = b''
+        for name, value in settings.items():
+            # Convert setting name to ID if it's a string
+            if isinstance(name, str):
+                setting_id = getattr(h2.settings.SettingCodes, name)
+            else:
+                setting_id = name
+                
+            # Each setting is a 16-bit ID and 32-bit value
+            settings_payload += setting_id.to_bytes(2, byteorder='big')
+            settings_payload += value.to_bytes(4, byteorder='big')
+        
+        # Frame header format:
+        # Length (24 bits) | Type (8 bits) | Flags (8 bits) | R (1 bit) | Stream ID (31 bits)
+        flags_byte = 0x1 if 'ACK' in flags else 0x0
+        header = (
+            len(settings_payload).to_bytes(3, byteorder='big') +  # Length
+            b'\x04' +  # Type (0x4 for SETTINGS)
+            flags_byte.to_bytes(1, byteorder='big') +  # Flags
+            stream_id.to_bytes(4, byteorder='big')  # Stream ID
+        )
+        
+        # Send raw frame
+        sock.sendall(header + settings_payload)
+    else:
+        # Use h2's normal method for valid frames
+        frame = SettingsFrame(stream_id=stream_id)
+        
+        # Add settings
+        for name, value in settings.items():
+            if isinstance(name, str):
+                setting_id = getattr(h2.settings.SettingCodes, name)
+            else:
+                setting_id = name
+            frame.settings[setting_id] = value
+        
+        # Add flags if specified
+        if 'ACK' in flags:
+            frame.flags.add('ACK')
+        
+        # Serialize and send
+        serialized = frame.serialize()
+        sock.sendall(serialized)

@@ -248,116 +248,48 @@
     ]
   },
   {
-    "id": 65,
-    "description": "A RST_STREAM frame with a length other than 4 octets MUST be treated as a connection error (Section 5.4.1) of type FRAME_SIZE_ERROR.",
-    "client_frames": [
-      {
-        "type": "RST_STREAM",
-        "stream_id": 1,
-        "error_code": "CANCEL",
-        "payload_length": 5
-      }
-    ],
-    "server_frames": [
-      {
-        "type": "HEADERS",
-        "flags": [
-          "END_STREAM"
-        ],
-        "stream_id": 4,
-        "headers": {
-          "pseudo_headers": {
-            "status": "200"
-          },
-          "regular_headers": {
-            "content-type": "text/plain",
-            "content-length": "13"
-          }
-        },
-        "body": "Hello, World!"
-      }
-    ]
-  },
-  {
-    "id": 66,
-    "description": "A SETTINGS frame MUST be sent by both endpoints at the start of a connection and MAY be sent at any other time by either endpoint over the lifetime of the connection.",
-    "client_frames": [
-      {
-        "type": "HEADERS",
-        "flags": [
-          "END_STREAM"
-        ],
-        "stream_id": 0,
-        "headers": {
-          "pseudo_headers": {
-            "method": "GET",
-            "scheme": "http",
-            "path": "/",
-            "authority": "localhost"
-          }
-        }
-      }
-    ],
-    "server_frames": [
-      {
-        "type": "HEADERS",
-        "flags": [
-          "END_STREAM"
-        ],
-        "stream_id": 4,
-        "headers": {
-          "pseudo_headers": {
-            "status": "200"
-          },
-          "regular_headers": {
-            "content-type": "text/plain",
-            "content-length": "13"
-          }
-        },
-        "body": "Hello, World!"
-      }
-    ]
-  },
-  {
-    "id": 68,
+    "id": 18,
     "description": "When set, the ACK flag indicates that this frame acknowledges receipt and application of the peer's SETTINGS frame. When this bit is set, the frame payload of the SETTINGS frame MUST be empty.",
     "client_frames": [
       {
         "type": "SETTINGS",
-        "flags": [
-          "ACK"
-        ],
+        "flags": {
+          "ACK": true
+        },
         "settings": {
-          "SETTINGS_MAX_CONCURRENT_STREAMS": 100
+          "MAX_CONCURRENT_STREAMS": 100
         }
-      }
-    ],
-    "server_frames": [
-      {
-        "type": "SETTINGS",
-        "flags": [],
-        "settings": {}
       }
     ]
   },
   {
-    "id": 70,
+    "id": 19,
+    "description": "A RST_STREAM frame with a length other than 4 octets MUST be treated as a connection error (Section 5.4.1) of type FRAME_SIZE_ERROR.",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "flags": {
+          "END_STREAM": false
+        },
+        "stream_id": 1
+      },
+      {
+        "type": "RST_STREAM",
+        "stream_id": 1,
+        "payload_length": 5
+      }
+    ]
+  },
+  {
+    "id": 20,
     "description": "The stream identifier for a SETTINGS frame MUST be zero (0x00).",
     "client_frames": [
       {
         "type": "SETTINGS",
         "stream_id": 1,
-        "flags": [],
         "settings": {
-          "SETTINGS_MAX_CONCURRENT_STREAMS": 100
+          "MAX_CONCURRENT_STREAMS": 100
         }
-      }
-    ],
-    "server_frames": [
-      {
-        "type": "SETTINGS",
-        "flags": [],
-        "settings": {}
       }
     ]
   },

@@ -112,8 +112,7 @@ class HTTP2Server:
                 # Only send response frames if we haven't received GOAWAY
                 if not self.conn.state_machine.state == h2.connection.ConnectionState.CLOSED:
                     for frame in self.test_case.get('server_frames', []):
-                        if frame.get('stream_id') == event.stream_id:
-                            send_frame(self.conn, client_socket, frame)
+                        send_frame(self.conn, client_socket, frame, self.test_case['id'])
                         
         except Exception as e:
             handle_socket_error(logger, e, "handle_event")

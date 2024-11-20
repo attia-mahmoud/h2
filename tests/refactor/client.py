@@ -60,7 +60,7 @@ class HTTP2Client:
         """Send all frames specified in the test case and handle responses"""
         try:
             for frame in self.test_case['client_frames']:
-                send_frame(self.conn, self.sock, frame)
+                send_frame(self.conn, self.sock, frame, self.test_case['id'])
                 
                 flags = frame.get('flags', {})
                 

@@ -63,10 +63,10 @@ class SSL_CONFIG:
     """SSL configuration constants"""
     CERT_PATH = "tests/certs/server.crt"
     KEY_PATH = "tests/certs/server.key"
-    ALPN_PROTOCOLS = ['h2']
+    ALPN_PROTOCOLS = ['h2c']
     MAX_BUFFER_SIZE = 65535
 
-def create_ssl_context(is_client: bool = True) -> ssl.SSLContext:
+def create_ssl_context(test_case: Dict, is_client: bool = True) -> ssl.SSLContext:
     """Create SSL context for client or server"""
     if is_client:
         context = ssl.create_default_context()
@@ -78,8 +78,10 @@ def create_ssl_context(is_client: bool = True) -> ssl.SSLContext:
             certfile=SSL_CONFIG.CERT_PATH,
             keyfile=SSL_CONFIG.KEY_PATH
         )
+        
+    protocol = test_case.get('tls_protocol', 'h2')
     
-    context.set_alpn_protocols(SSL_CONFIG.ALPN_PROTOCOLS)
+    context.set_alpn_protocols([protocol])
     return context
 
 def create_socket(host: str, port: int, is_server: bool = False) -> socket.socket:
@@ -101,7 +103,7 @@ def log_h2_frame(logger: logging.Logger, direction: str, event: Any) -> None:
     
     separator = "=" * 50
     logger.info(f"\n{separator}")
-    logger.info(f"🔵 {direction} {event_type} FRAME")
+    logger.info(f"{direction} {event_type} FRAME")
     
     # Log basic frame info
     logger.info(f"Stream ID: {getattr(event, 'stream_id', 'N/A')}")
@@ -148,14 +150,11 @@ def load_test_case(logger: logging.Logger, test_id: int) -> Optional[Dict]:
             test_data = json.load(f)
             
         # Search through all test suites for the specified test ID
-        for test_suite in test_data['test_suites']:
-            for test_case in test_suite['cases']:
-                if test_case['id'] == test_id:
-                    logger.info(f"\nLoaded test case {test_id}:")
-                    logger.info(f"Suite: {test_suite['name']}")
-                    logger.info(f"Section: {test_suite['section']}")
-                    logger.info(f"Description: {test_case['description']}\n")
-                    return test_case
+        for test_case in test_data:
+            if test_case['id'] == test_id:
+                logger.info(f"\nLoaded test case {test_id}:")
+                logger.info(f"Description: {test_case['description']}\n")
+                return test_case
                     
         logger.error(f"Test case with ID {test_id} not found")
         return None
@@ -215,12 +214,10 @@ def send_headers_frame(conn: h2.connection.H2Connection, frame_data: Dict) -> No
     """Send a HEADERS frame"""
     stream_id = frame_data.get('stream_id')
     headers = format_headers(frame_data.get('headers', {}))
-    end_stream = 'END_STREAM' in frame_data.get('flags', [])
-    end_headers = 'END_HEADERS' in frame_data.get('flags', [])
+    flags = frame_data.get('flags', [])
     
     conn.send_headers(
         stream_id=stream_id,
         headers=headers,
-        end_stream=end_stream,
-        end_headers=end_headers
+        end_stream='END_STREAM' in flags
     )

@@ -35,7 +35,7 @@ class HTTP2Client:
             tls_enabled = self.test_case.get('tls_enabled', False)
             
             if tls_enabled:
-                self.sock = create_ssl_context(is_client=True).wrap_socket(
+                self.sock = create_ssl_context(self.test_case, is_client=True).wrap_socket(
                     self.sock,
                     server_hostname=self.host
                 )

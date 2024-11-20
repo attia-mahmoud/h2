@@ -343,7 +343,7 @@ class H2Connection:
         self.max_inbound_frame_size = self.local_settings.max_frame_size
 
         # Buffer for incoming data.
-        self.incoming_buffer = FrameBuffer(server=not self.config.client_side, skip_connection_preface=self.config.skip_connection_preface, incorrect_connection_preface=self.config.incorrect_connection_preface)
+        self.incoming_buffer = FrameBuffer(server=not self.config.client_side, skip_client_connection_preface=self.config.skip_client_connection_preface)
 
         # A private variable to store a sequence of received header frames
         # until completion.
@@ -490,7 +490,7 @@ class H2Connection:
         """
         self.config.logger.debug("Initializing connection")
 
-        if self.config.skip_connection_preface:
+        if self.config.skip_client_connection_preface:
             return
         
         # Only process SEND_SETTINGS if we're not skipping settings
@@ -498,7 +498,7 @@ class H2Connection:
             self.state_machine.process_input(ConnectionInputs.SEND_SETTINGS)
         
         if self.config.client_side:
-            if self.config.incorrect_connection_preface:
+            if self.config.incorrect_client_connection_preface:
                 preamble = b'PRI * HTTP/1.1\r\n\r\nSM\r\n\r\n'
             else:
                 preamble = b'PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n'
@@ -1383,15 +1383,6 @@ class H2Connection:
         """
         self._data_to_send = bytearray()
 
-    def acknowledge_settings(self):
-        """
-        Only acknowledge settings if we're not skipping them
-        """
-        if not self.config.skip_settings:
-            return self._acknowledge_settings()
-        else:
-            return []
-
     def _acknowledge_settings(self):
         """
         Acknowledge settings that have been received.
@@ -1427,7 +1418,7 @@ class H2Connection:
 
         f = SettingsFrame(0)
         f.flags.add('ACK')
-        return [f]
+        return [] if self.config.skip_initial_settings_ack else [f]
 
     def _flow_control_change_from_settings(self, old_value, new_value):
         """
@@ -1734,10 +1725,7 @@ class H2Connection:
             )
         )
 
-        if not self.config.skip_settings_ack:
-            frames = self.acknowledge_settings()
-        else:
-            frames = []
+        frames = self._acknowledge_settings()
 
         return frames, events
 

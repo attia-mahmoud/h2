@@ -31,7 +31,6 @@ class HTTP2Server:
             # Create and configure socket
             self.sock = create_socket(self.host, self.port, is_server=True)
             self.sock.listen(5)
-            ssl_context = create_ssl_context(is_client=False)
             
             logger.info(f"Server listening on {self.host}:{self.port}")
             
@@ -40,11 +39,7 @@ class HTTP2Server:
                     client_socket, address = self.sock.accept()
                     logger.info(f"Connection from {address}")
                     
-                    client_socket = ssl_context.wrap_socket(
-                        client_socket,
-                        server_side=True
-                    )
-                    self.handle_connection(client_socket, address)
+                    self.handle_connection(client_socket)
                     
                 except KeyboardInterrupt:
                     logger.info("Shutting down server...")
@@ -59,14 +54,14 @@ class HTTP2Server:
             if self.sock:
                 self.sock.close()
     
-    def handle_connection(self, client_socket: ssl.SSLSocket, address: tuple):
+    def handle_connection(self, client_socket: ssl.SSLSocket):
         """Handle a single client connection"""
         try:
             # Get TLS setting from test case, default to False
             tls_enabled = self.test_case.get('tls_enabled', False)
             
             if tls_enabled:
-                ssl_context = create_ssl_context(is_client=False)
+                ssl_context = create_ssl_context(self.test_case, is_client=False)
                 client_socket = ssl_context.wrap_socket(
                     client_socket,
                     server_side=True
@@ -78,11 +73,6 @@ class HTTP2Server:
             self.conn = h2.connection.H2Connection(config=config)
             self.conn.initiate_connection()
             
-            # Log initial SETTINGS frame
-            logger.info("\n" + "="*50)
-            logger.info("🔵 SENDING INITIAL SETTINGS FRAME")
-            logger.info("="*50)
-            
             client_socket.sendall(self.conn.data_to_send())
             
             while True:
@@ -93,7 +83,7 @@ class HTTP2Server:
                 # Log received preface if this is the first data
                 if data.startswith(b'PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n'):
                     logger.info("\n" + "="*50)
-                    logger.info("🔵 RECEIVED HTTP/2 PREFACE")
+                    logger.info("RECEIVED HTTP/2 PREFACE")
                     logger.info("="*50)
                 
                 events = self.conn.receive_data(data)

@@ -75,7 +75,7 @@ class HTTP2Server:
             
             client_socket.sendall(self.conn.data_to_send())
             
-            while True:
+            while not self.conn.state_machine.state == h2.connection.ConnectionState.CLOSED:
                 data = client_socket.recv(SSL_CONFIG.MAX_BUFFER_SIZE)
                 if not data:
                     break
@@ -102,21 +102,19 @@ class HTTP2Server:
     def handle_event(self, event: h2.events.Event, client_socket: ssl.SSLSocket):
         """Handle H2 events"""
         try:
-            if isinstance(event, h2.events.StreamEnded):
-                # Stream is complete, check if we need to send any frames
-                for frame in self.test_case.get('server_frames', []):
-                    if frame.get('stream_id') == event.stream_id:
-                        send_frame(self.conn, client_socket, frame)
-                    
-            elif isinstance(event, h2.events.ConnectionTerminated):
-                # Client sent GOAWAY, acknowledge it and prepare to close
+            if isinstance(event, h2.events.ConnectionTerminated):
+                # Client sent GOAWAY, log it but don't try to send more data
                 logger.info(f"Received GOAWAY frame. Error code: {event.error_code}, "
-                           f"Last Stream ID: {event.last_stream_id}")
-                
-                # Send our own GOAWAY if we haven't already
-                self.conn.close_connection()
-                client_socket.sendall(self.conn.data_to_send())
-                    
+                       f"Last Stream ID: {event.last_stream_id}")
+                return  # Exit immediately without trying to send more data
+            
+            if isinstance(event, h2.events.StreamEnded):
+                # Only send response frames if we haven't received GOAWAY
+                if not self.conn.state_machine.state == h2.connection.ConnectionState.CLOSED:
+                    for frame in self.test_case.get('server_frames', []):
+                        if frame.get('stream_id') == event.stream_id:
+                            send_frame(self.conn, client_socket, frame)
+                        
         except Exception as e:
             handle_socket_error(logger, e, "handle_event")
 

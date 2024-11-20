@@ -6,17 +6,7 @@
     "tls_protocol": "h2c",
     "client_frames": [
       {
-        "type": "HEADERS",
-        "flags": [
-          "END_STREAM"
-        ],
-        "stream_id": 1,
-        "headers": {
-            ":method": "GET",
-            ":scheme": "http",
-            ":path": "/",
-            ":authority": "localhost"
-        }
+        "type": "HEADERS"
       }
     ]
   },
@@ -32,18 +22,7 @@
     },
     "client_frames": [
       {
-        "type": "HEADERS",
-        "flags": [
-          "END_STREAM"
-        ],
-        "stream_id": 1,
-        "headers": {
-            ":method": "GET",
-            ":scheme": "https",
-            ":path": "/",
-            ":authority": "localhost",
-            "user-agent": "test-client"
-        }
+        "type": "HEADERS"
       }
     ]
   },
@@ -55,18 +34,7 @@
     },
     "client_frames": [
       {
-        "type": "HEADERS",
-        "flags": [
-          "END_STREAM"
-        ],
-        "stream_id": 1,
-        "headers": {
-            ":method": "GET",
-            ":scheme": "http",
-            ":path": "/",
-            ":authority": "localhost",
-            "user-agent": "test-client"
-        }
+        "type": "HEADERS"
       }
     ]
   },
@@ -78,18 +46,7 @@
     },
     "client_frames": [
       {
-        "type": "HEADERS",
-        "flags": [
-          "END_STREAM"
-        ],
-        "stream_id": 1,
-        "headers": {
-          ":method": "GET",
-          ":scheme": "http",
-          ":path": "/",
-          ":authority": "localhost",
-          "user-agent": "test-client"
-        }
+        "type": "HEADERS"
       }
     ]
   },
@@ -101,18 +58,7 @@
     },
     "client_frames": [
       {
-        "type": "HEADERS",
-        "flags": [
-          "END_STREAM"
-        ],
-        "stream_id": 1,
-        "headers": {
-          ":method": "GET",
-          ":scheme": "http",
-          ":path": "/",
-          ":authority": "localhost",
-          "user-agent": "test-client"
-        }
+        "type": "HEADERS"
       }
     ]
   },
@@ -124,18 +70,7 @@
     },
     "client_frames": [
       {
-        "type": "HEADERS",
-        "flags": [
-          "END_STREAM"
-        ],
-        "stream_id": 1,
-        "headers": {
-          ":method": "GET",
-          ":scheme": "http",
-          ":path": "/",
-          ":authority": "localhost",
-          "user-agent": "test-client"
-        }
+        "type": "HEADERS"
       }
     ]
   },
@@ -147,18 +82,7 @@
     },
     "client_frames": [
       {
-        "type": "HEADERS",
-        "flags": [
-          "END_STREAM"
-        ],
-        "stream_id": 1,
-        "headers": {
-          ":method": "GET",
-          ":scheme": "http",
-          ":path": "/",
-          ":authority": "localhost",
-          "user-agent": "test-client"
-        }
+        "type": "HEADERS"
       }
     ]
   },
@@ -168,21 +92,12 @@
     "client_frames": [
       {
         "type": "HEADERS",
-        "stream_id": 1,
-        "headers": {
-          ":method": "GET",
-          ":scheme": "http",
-          ":path": "/",
-          ":authority": "localhost",
-          "user-agent": "test-client"
+        "flags": {
+          "END_STREAM": false
         }
       },
       {
         "type": "DATA",
-        "flags": [
-          "END_STREAM"
-        ],
-        "stream_id": 1,
         "payload_size": 17000
       }
     ]
@@ -205,37 +120,7 @@
     "client_frames": [
       {
         "type": "HEADERS",
-        "flags": ["END_HEADERS"],
-        "stream_id": 1,
-        "headers": {
-          "pseudo_headers": {
-            "method": "GET",
-            "scheme": "http",
-            "path": "/",
-            "authority": "localhost"
-          },
-          "regular_headers": {
-            "user-agent": "test-client"
-          }
-        },
-        "reserved_bit": 1
-      }
-    ],
-    "server_frames": [
-      {
-        "type": "HEADERS",
-        "flags": ["END_STREAM"],
-        "stream_id": 1,
-        "headers": {
-          "pseudo_headers": {
-            "status": "200"
-          },
-          "regular_headers": {
-            "content-type": "text/plain",
-            "content-length": "13"
-          }
-        },
-        "body": "Hello, World!"
+        "reserved_bit": true
       }
     ]
   },
@@ -245,24 +130,7 @@
     "client_frames": [
       {
         "type": "DATA",
-        "flags": ["END_STREAM"],
-        "stream_id": 1,
         "payload": "Hello, World!"
-      }
-    ],
-    "server_frames": [
-      {
-        "type": "HEADERS",
-        "flags": ["END_STREAM"],
-        "stream_id": 1,
-        "headers": {
-          "pseudo_headers": {
-            "status": "200"
-          },
-          "regular_headers": {
-            "content-type": "text/plain"
-          }
-        }
       }
     ]
   },

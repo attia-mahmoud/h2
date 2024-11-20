@@ -62,14 +62,13 @@ class HTTP2Client:
             for frame in self.test_case['client_frames']:
                 send_frame(self.conn, self.sock, frame)
                 
-                # For unknown frames, add a small delay
-                if frame.get('type') == 'UNKNOWN':
-                    time.sleep(0.1)
+                flags = frame.get('flags', {})
                 
-                # Try to receive a response with timeout
-                response = self._receive_response(timeout=0.5)
-                if response:
-                    logger.info(f"Received response: {response}")
+                if not flags.get('END_STREAM') is False:
+                    # Try to receive a response with timeout
+                    response = self._receive_response(timeout=0.5)
+                    if response:
+                        logger.info(f"Received response: {response}")
             
         except Exception as e:
             logger.error(f"Error sending frames: {e}")

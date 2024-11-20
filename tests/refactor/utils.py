@@ -9,6 +9,10 @@ import os
 from datetime import datetime
 import argparse
 import h2.connection
+from hyperframe.frame import (
+    HeadersFrame, DataFrame, GoAwayFrame, WindowUpdateFrame, 
+    PingFrame, SettingsFrame
+)
 
 # Configure shared logging
 def setup_logging(name: str) -> logging.Logger:
@@ -201,7 +205,7 @@ def send_frame(conn: h2.connection.H2Connection, sock: socket.socket,
     frame_type = frame_data.get('type')
     
     if frame_type == 'HEADERS':
-        send_headers_frame(conn, frame_data)
+        send_headers_frame(conn, sock, frame_data)
     elif frame_type == 'DATA':
         send_data_frame(conn, frame_data)
     elif frame_type == 'UNKNOWN':
@@ -212,24 +216,57 @@ def send_frame(conn: h2.connection.H2Connection, sock: socket.socket,
     if outbound_data:
         sock.sendall(outbound_data)
 
-def send_headers_frame(conn: h2.connection.H2Connection, frame_data: Dict) -> None:
+def send_headers_frame(conn: h2.connection.H2Connection, sock, frame_data: Dict) -> None:
     """Send a HEADERS frame"""
-    stream_id = frame_data.get('stream_id')
-    headers = format_headers(frame_data.get('headers', {}))
-    flags = frame_data.get('flags', [])
+    stream_id = frame_data.get('stream_id', 1)
+    headers = frame_data.get('headers', [(':method', 'GET'), (':path', '/'), (':authority', 'localhost'), (':scheme', 'http')])
+    flags = frame_data.get('flags', {})
+    end_stream = flags.get('END_STREAM', True)
     
-    conn.send_headers(
-        stream_id=stream_id,
-        headers=headers,
-        end_stream='END_STREAM' in flags
-    )
+    if frame_data.get('reserved_bit'):
+        # Get encoded headers data
+        encoded_headers = conn.encoder.encode(headers)
+        
+        # Construct frame header bytes
+        length = len(encoded_headers)
+        type_byte = 0x1  # HEADERS frame type
+        frame_flags = 0x4  # END_HEADERS
+        if end_stream:
+            frame_flags |= 0x1  # END_STREAM
+            
+        # Create the length field (24 bits)
+        length_bytes = length.to_bytes(3, byteorder='big')
+        
+        # Create type and flags bytes
+        type_byte = type_byte.to_bytes(1, byteorder='big')
+        flags_byte = frame_flags.to_bytes(1, byteorder='big')
+        
+        # Create stream ID with reserved bit
+        # If reserved_bit is True, set highest bit to 1
+        if frame_data.get('reserved_bit'):
+            stream_id |= (1 << 31)  # Set the highest bit
+        stream_id_bytes = stream_id.to_bytes(4, byteorder='big')
+        
+        # Combine all parts
+        frame_header = length_bytes + type_byte + flags_byte + stream_id_bytes
+        frame = frame_header + encoded_headers
+        
+        sock.sendall(frame)
+        
+        conn.state_machine.process_input(h2.connection.ConnectionInputs.SEND_HEADERS)
+    else:
+        conn.send_headers(
+            stream_id=stream_id,
+            headers=headers,
+            end_stream=end_stream
+        )
 
 def send_data_frame(conn: h2.connection.H2Connection, frame_data: Dict) -> None:
     """Send a DATA frame"""
-    stream_id = frame_data.get('stream_id')
-    flags = frame_data.get('flags', [])
+    stream_id = frame_data.get('stream_id', 1)
+    flags = frame_data.get('flags', {})
     payload = frame_data.get('payload', '')
-    payload_size = frame_data.get('payload_size')
+    payload_size = frame_data.get('payload_size', None)
     
     if payload_size and not payload:
         payload = b'x' * payload_size
@@ -239,7 +276,7 @@ def send_data_frame(conn: h2.connection.H2Connection, frame_data: Dict) -> None:
     conn.send_data(
         stream_id=stream_id,
         data=payload,
-        end_stream='END_STREAM' in flags
+        end_stream=flags.get('END_STREAM', True)
     )
 
 def send_unknown_frame(sock: socket.socket, frame_data: Dict) -> None:

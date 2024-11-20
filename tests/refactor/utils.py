@@ -11,7 +11,7 @@ import argparse
 import h2.connection
 from hyperframe.frame import (
     HeadersFrame, DataFrame, GoAwayFrame, WindowUpdateFrame, 
-    PingFrame, SettingsFrame, RstStreamFrame
+    PingFrame, SettingsFrame, RstStreamFrame, PriorityFrame
 )
 
 # Configure shared logging
@@ -212,6 +212,8 @@ def send_frame(conn: h2.connection.H2Connection, sock: socket.socket,
         send_unknown_frame(sock, frame_data)
     elif frame_type == 'RST_STREAM':
         send_rst_stream_frame(conn, sock, frame_data)
+    elif frame_type == 'PRIORITY':
+        send_priority_frame(conn, sock, frame_data)
     
     # Send any pending data
     outbound_data = conn.data_to_send()
@@ -313,4 +315,15 @@ def send_rst_stream_frame(conn: h2.connection.H2Connection, sock: socket.socket,
     rsf = RstStreamFrame(stream_id)
     rsf.error_code = 0
     frame = rsf.serialize()
+    sock.sendall(frame)
+
+def send_priority_frame(conn, sock, frame_data):
+    stream_id = frame_data.get('stream_id', 1)
+    frame = PriorityFrame(stream_id)
+
+    frame.stream_weight = frame_data.get('weight', 15)
+    frame.depends_on = frame_data.get('depends_on', 0)
+    frame.exclusive = frame_data.get('exclusive', False)
+
+    frame = frame.serialize()
     sock.sendall(frame)

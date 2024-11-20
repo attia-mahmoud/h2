@@ -194,95 +194,39 @@
     ]
   },
   {
-    "id": 55,
-    "description": "An endpoint MUST NOT send a RST_STREAM in response to a RST_STREAM frame",
-    "client_frames": [
-      {
-        "type": "HEADERS",
-        "flags": [
-          "END_STREAM"
-        ],
-        "stream_id": 0,
-        "headers": {
-          "pseudo_headers": {
-            "method": "GET",
-            "scheme": "http",
-            "path": "/",
-            "authority": "localhost"
-          }
-        }
-      }
-    ],
-    "server_frames": [
-      {
-        "type": "HEADERS",
-        "flags": [
-          "END_STREAM"
-        ],
-        "stream_id": 4,
-        "headers": {
-          "pseudo_headers": {
-            "status": "200"
-          },
-          "regular_headers": {
-            "content-type": "text/plain",
-            "content-length": "13"
-          }
-        },
-        "body": "Hello, World!"
-      }
-    ]
-  },
-  {
-    "id": 57,
+    "id": 15,
     "description": "If a PRIORITY frame is received with a stream identifier of 0x00, the recipient MUST respond with a connection error of type PROTOCOL_ERROR",
     "client_frames": [
       {
         "type": "PRIORITY",
-        "stream_id": 0,
-        "weight": 16,
-        "depends_on": 0,
-        "exclusive": false
+        "stream_id": 0
+      }
+    ]
+  },
+  {
+    "id": 16,
+    "description": "After receiving a RST_STREAM on a stream, the receiver MUST NOT send additional frames for that stream, except for PRIORITY",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "flags": {
+          "END_STREAM": false
+        },
+        "stream_id": 1
+      },
+      {
+        "type": "RST_STREAM",
+        "flags": {
+          "END_STREAM": true
+        },
+        "stream_id": 1
       }
     ],
     "server_frames": [
       {
         "type": "HEADERS",
-        "flags": [
-          "END_STREAM"
-        ],
-        "stream_id": 4,
-        "headers": {
-          "pseudo_headers": {
-            "status": "200"
-          },
-          "regular_headers": {
-            "content-type": "text/plain",
-            "content-length": "13"
-          }
-        },
-        "body": "Hello, World!"
-      }
-    ]
-  },
-  {
-    "id": 59,
-    "description": "After receiving a RST_STREAM on a stream, the receiver MUST NOT send additional frames for that stream, except for PRIORITY",
-    "client_frames": [
-      {
-        "type": "RST_STREAM",
-        "stream_id": 1,
-        "error_code": "CANCEL"
-      }
-    ],
-    "server_frames": [
-      {
-        "type": "DATA",
-        "stream_id": 1,
-        "flags": [
-          "END_STREAM"
-        ],
-        "payload_size": 10
+        "raw_payload": true,
+        "stream_id": 2
       }
     ]
   },

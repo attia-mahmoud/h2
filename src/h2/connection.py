@@ -1825,10 +1825,10 @@ class H2Connection:
         event.weight = frame.stream_weight + 1
 
         # A stream may not depend on itself.
-        if event.depends_on == frame.stream_id:
-            raise ProtocolError(
-                "Stream %d may not depend on itself" % frame.stream_id
-            )
+        # if event.depends_on == frame.stream_id:
+        #     raise ProtocolError(
+        #         "Stream %d may not depend on itself" % frame.stream_id
+        #     )
         events.append(event)
 
         return [], events
@@ -2009,10 +2009,10 @@ def _add_frame_priority(frame, weight=None, depends_on=None, exclusive=None):
     This method validates the input values.
     """
     # A stream may not depend on itself.
-    if depends_on == frame.stream_id:
-        raise ProtocolError(
-            "Stream %d may not depend on itself" % frame.stream_id
-        )
+    # if depends_on == frame.stream_id:
+    #     raise ProtocolError(
+    #         "Stream %d may not depend on itself" % frame.stream_id
+    #     )
 
     # Weight must be between 1 and 256.
     if weight is not None:

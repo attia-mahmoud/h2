@@ -31,9 +31,7 @@ class HTTP2Server:
             # Create and configure socket
             self.sock = create_socket(self.host, self.port, is_server=True)
             self.sock.listen(5)
-            
-            logger.info(f"Server listening on {self.host}:{self.port}")
-            
+                        
             while True:
                 try:
                     client_socket, address = self.sock.accept()

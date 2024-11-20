@@ -146,7 +146,7 @@
     "server_frames": [
       {
         "type": "HEADERS",
-        "stream_id": 2
+        "stream_id": 3
       }
     ]
   },

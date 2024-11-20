@@ -64,11 +64,14 @@ class HTTP2Client:
                 
                 flags = frame.get('flags', {})
                 
+                # Wait for response unless explicitly told not to
                 if not flags.get('END_STREAM') is False:
-                    # Try to receive a response with timeout
-                    response = self._receive_response(timeout=0.5)
-                    if response:
-                        logger.info(f"Received response: {response}")
+                    # Try to receive a response with longer timeout
+                    self._receive_response(timeout=1.0)
+            
+            # Add additional wait time for any remaining server frames
+            if self.test_case.get('server_frames'):
+                self._receive_response(timeout=1.0)
             
         except Exception as e:
             logger.error(f"Error sending frames: {e}")

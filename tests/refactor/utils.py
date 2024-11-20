@@ -194,7 +194,7 @@ def format_headers(headers_dict: Dict) -> List[Tuple[str, str]]:
     return headers
 
 def send_frame(conn: h2.connection.H2Connection, sock: socket.socket, 
-               frame_data: Dict) -> None:
+               frame_data: Dict, id) -> None:
     """Send a single H2 frame
     Args:
         conn: H2Connection instance
@@ -205,7 +205,7 @@ def send_frame(conn: h2.connection.H2Connection, sock: socket.socket,
     frame_type = frame_data.get('type')
     
     if frame_type == 'HEADERS':
-        send_headers_frame(conn, sock, frame_data)
+        send_headers_frame(conn, sock, frame_data, id)
     elif frame_type == 'DATA':
         send_data_frame(conn, frame_data)
     elif frame_type == 'UNKNOWN':
@@ -216,10 +216,15 @@ def send_frame(conn: h2.connection.H2Connection, sock: socket.socket,
     if outbound_data:
         sock.sendall(outbound_data)
 
-def send_headers_frame(conn: h2.connection.H2Connection, sock, frame_data: Dict) -> None:
+def send_headers_frame(conn: h2.connection.H2Connection, sock, frame_data: Dict, id) -> None:
     """Send a HEADERS frame"""
     stream_id = frame_data.get('stream_id', 1)
-    headers = frame_data.get('headers', [(':method', 'GET'), (':path', '/'), (':authority', 'localhost'), (':scheme', 'http')])
+    headers = frame_data.get('headers')
+    if headers:
+        headers = format_headers(headers)
+    else:
+        headers = [(':method', 'GET'), (':path', '/'), (':authority', 'localhost'), (':scheme', 'http'), ('user-agent', f'test {id}')]
+        
     flags = frame_data.get('flags', {})
     end_stream = flags.get('END_STREAM', True)
     
@@ -260,6 +265,7 @@ def send_headers_frame(conn: h2.connection.H2Connection, sock, frame_data: Dict)
             headers=headers,
             end_stream=end_stream
         )
+    print(f"Sent HEADERS frame with stream ID {stream_id}")
 
 def send_data_frame(conn: h2.connection.H2Connection, frame_data: Dict) -> None:
     """Send a DATA frame"""

@@ -231,32 +231,19 @@
     ]
   },
   {
-    "id": 62,
+    "id": 17,
     "description": "If a RST_STREAM frame is received with a stream identifier of 0x00, the recipient MUST treat this as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
     "client_frames": [
       {
-        "type": "RST_STREAM",
-        "stream_id": 0,
-        "error_code": "CANCEL"
-      }
-    ],
-    "server_frames": [
-      {
         "type": "HEADERS",
-        "flags": [
-          "END_STREAM"
-        ],
-        "stream_id": 4,
-        "headers": {
-          "pseudo_headers": {
-            "status": "200"
-          },
-          "regular_headers": {
-            "content-type": "text/plain",
-            "content-length": "13"
-          }
+        "flags": {
+          "END_STREAM": false
         },
-        "body": "Hello, World!"
+        "stream_id": 0
+      },
+      {
+        "type": "RST_STREAM",
+        "stream_id": 0
       }
     ]
   },

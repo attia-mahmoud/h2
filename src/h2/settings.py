@@ -317,7 +317,8 @@ def _validate_setting(setting, value):  # noqa: C901
     """
     if setting == SettingCodes.ENABLE_PUSH:
         if value not in (0, 1):
-            return ErrorCodes.PROTOCOL_ERROR
+            pass
+            # return ErrorCodes.PROTOCOL_ERROR
     elif setting == SettingCodes.INITIAL_WINDOW_SIZE:
         if not 0 <= value <= 2147483647:  # 2^31 - 1
             return ErrorCodes.FLOW_CONTROL_ERROR

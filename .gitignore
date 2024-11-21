@@ -11,6 +11,6 @@ coverage.xml
 .cache/
 _trial_temp/
 
-# .venv
+.venv
 
 logs

@@ -172,11 +172,7 @@ class H2Configuration:
                  split_outbound_cookies=False,
                  validate_inbound_headers=True,
                  normalize_inbound_headers=True,
-                 logger=None,
-                 skip_initial_settings=False,
-                 skip_initial_settings_ack=False,
-                 incorrect_client_connection_preface=False,
-                 skip_client_connection_preface=False):
+                 logger=None):
         self.client_side = client_side
         self.header_encoding = header_encoding
         self.validate_outbound_headers = validate_outbound_headers
@@ -185,10 +181,6 @@ class H2Configuration:
         self.validate_inbound_headers = validate_inbound_headers
         self.normalize_inbound_headers = normalize_inbound_headers
         self.logger = logger or DummyLogger(__name__)
-        self.skip_initial_settings = skip_initial_settings
-        self.skip_initial_settings_ack = skip_initial_settings_ack
-        self.incorrect_client_connection_preface = incorrect_client_connection_preface
-        self.skip_client_connection_preface = skip_client_connection_preface
 
     @property
     def header_encoding(self):

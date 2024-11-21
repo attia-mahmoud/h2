@@ -343,7 +343,7 @@ class H2Connection:
         self.max_inbound_frame_size = self.local_settings.max_frame_size
 
         # Buffer for incoming data.
-        self.incoming_buffer = FrameBuffer(server=not self.config.client_side, skip_client_connection_preface=self.config.skip_client_connection_preface)
+        self.incoming_buffer = FrameBuffer(server=not self.config.client_side)
 
         # A private variable to store a sequence of received header frames
         # until completion.
@@ -455,13 +455,13 @@ class H2Connection:
             self.highest_inbound_stream_id
         )
 
-        # if stream_id <= highest_stream_id:
-        #     raise StreamIDTooLowError(stream_id, highest_stream_id)
+        if stream_id <= highest_stream_id:
+            raise StreamIDTooLowError(stream_id, highest_stream_id)
 
-        # if (stream_id % 2) != int(allowed_ids):
-        #     raise ProtocolError(
-        #         "Invalid stream ID for peer."
-        #     )
+        if (stream_id % 2) != int(allowed_ids):
+            raise ProtocolError(
+                "Invalid stream ID for peer."
+            )
 
         s = H2Stream(
             stream_id,
@@ -1591,10 +1591,9 @@ class H2Connection:
 
         pushed_headers = _decode_headers(self.decoder, frame.data)
 
-        # events = self.state_machine.process_input(
-        #     ConnectionInputs.RECV_PUSH_PROMISE
-        # )
-        events = []
+        events = self.state_machine.process_input(
+            ConnectionInputs.RECV_PUSH_PROMISE
+        )
 
         try:
             stream = self._get_stream_by_id(frame.stream_id)
@@ -1826,10 +1825,10 @@ class H2Connection:
         event.weight = frame.stream_weight + 1
 
         # A stream may not depend on itself.
-        # if event.depends_on == frame.stream_id:
-        #     raise ProtocolError(
-        #         "Stream %d may not depend on itself" % frame.stream_id
-        #     )
+        if event.depends_on == frame.stream_id:
+            raise ProtocolError(
+                "Stream %d may not depend on itself" % frame.stream_id
+            )
         events.append(event)
 
         return [], events

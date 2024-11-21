@@ -31,11 +31,11 @@ class FrameBuffer:
     This is a data structure that expects to act as a buffer for HTTP/2 data
     that allows iteraton in terms of H2 frames.
     """
-    def __init__(self, server=False, skip_client_connection_preface=False):
+    def __init__(self, server=False):
         self.data = b''
         self.max_frame_size = 0
         self._preamble = b'PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n' if server else b''
-        self._preamble_len = 0 if skip_client_connection_preface else len(self._preamble)
+        self._preamble_len = len(self._preamble)
         self._headers_buffer = []
 
     def add_data(self, data):
@@ -48,9 +48,8 @@ class FrameBuffer:
             data_len = len(data)
             of_which_preamble = min(self._preamble_len, data_len)
 
-            # if self._preamble[:of_which_preamble] != data[:of_which_preamble]:
-                # raise ProtocolError("Invalid HTTP/2 preamble.")
-                # pass
+            if self._preamble[:of_which_preamble] != data[:of_which_preamble]:
+                raise ProtocolError("Invalid HTTP/2 preamble.")
 
             data = data[of_which_preamble:]
             self._preamble_len -= of_which_preamble

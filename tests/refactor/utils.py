@@ -216,6 +216,8 @@ def send_frame(conn: h2.connection.H2Connection, sock: socket.socket,
         send_priority_frame(conn, sock, frame_data)
     elif frame_type == 'SETTINGS':
         send_settings_frame(conn, sock, frame_data)
+    elif frame_type == 'PUSH_PROMISE':
+        send_push_promise_frame(conn, sock, frame_data)
     
     # Send any pending data
     outbound_data = conn.data_to_send()
@@ -345,29 +347,31 @@ def send_priority_frame(conn, sock, frame_data):
 def send_settings_frame(conn: h2.connection.H2Connection, sock: socket.socket, frame_data: Dict) -> None:
     """Send a SETTINGS frame with optional stream ID"""
     settings = frame_data.get('settings', {})
-    flags = frame_data.get('flags', [])
+    flags = frame_data.get('flags', {})
     stream_id = frame_data.get('stream_id', 0)  # Default to 0 as per spec
     
     # If we want to bypass h2 validation and send raw frame
-    if stream_id != 0 or frame_data.get('bypass_validation', False):
-        # Convert settings to bytes
+    if stream_id != 0 or 'payload_length' in frame_data:
         settings_payload = b''
+
         for name, value in settings.items():
-            # Convert setting name to ID if it's a string
             if isinstance(name, str):
                 setting_id = getattr(h2.settings.SettingCodes, name)
             else:
                 setting_id = name
-                
             # Each setting is a 16-bit ID and 32-bit value
             settings_payload += setting_id.to_bytes(2, byteorder='big')
             settings_payload += value.to_bytes(4, byteorder='big')
+        
+        extra_payload = b'\x00' * frame_data.get('payload_length', 0)
+        settings_payload += extra_payload
+        length = len(settings_payload)
         
         # Frame header format:
         # Length (24 bits) | Type (8 bits) | Flags (8 bits) | R (1 bit) | Stream ID (31 bits)
         flags_byte = 0x1 if 'ACK' in flags else 0x0
         header = (
-            len(settings_payload).to_bytes(3, byteorder='big') +  # Length
+            length.to_bytes(3, byteorder='big') +  # Length
             b'\x04' +  # Type (0x4 for SETTINGS)
             flags_byte.to_bytes(1, byteorder='big') +  # Flags
             stream_id.to_bytes(4, byteorder='big')  # Stream ID
@@ -394,3 +398,48 @@ def send_settings_frame(conn: h2.connection.H2Connection, sock: socket.socket, f
         # Serialize and send
         serialized = frame.serialize()
         sock.sendall(serialized)
+
+def send_push_promise_frame(conn: h2.connection.H2Connection, sock: socket.socket, frame_data: Dict) -> None:
+    """Send a PUSH_PROMISE frame"""
+    stream_id = frame_data.get('stream_id', 1)
+    promised_stream_id = frame_data.get('promised_stream_id', 2)
+    headers = frame_data.get('headers')
+    flags = frame_data.get('flags', [])
+    
+    if headers:
+        headers = format_headers(headers)
+    else:
+        headers = [(':method', 'GET'), (':path', '/'), (':authority', 'localhost'), (':scheme', 'http'), ('user-agent', f'test {id}')]
+    
+    # Get encoded headers from the connection's encoder
+    encoded_headers = conn.encoder.encode(headers)
+    
+    # Frame header format:
+    # Length (24 bits) | Type (8 bits) | Flags (8 bits) | R (1 bit) | Stream ID (31 bits)
+    # Followed by:
+    # R (1 bit) | Promised Stream ID (31 bits) | Header Block Fragment
+    
+    # Calculate total length (4 bytes for promised stream ID + encoded headers)
+    length = 4 + len(encoded_headers)
+    
+    # Create flags byte
+    flags_byte = 0
+    # END_HEADERS flag
+    flags_byte |= 0x4
+    
+    # Create frame header
+    header = (
+        length.to_bytes(3, byteorder='big') +  # Length
+        b'\x05' +  # Type (0x5 for PUSH_PROMISE)
+        flags_byte.to_bytes(1, byteorder='big') +  # Flags
+        stream_id.to_bytes(4, byteorder='big')  # Stream ID
+    )
+    
+    # Create promised stream ID field (31 bits, with reserved bit)
+    promised_stream_bytes = promised_stream_id.to_bytes(4, byteorder='big')
+    
+    # Combine all parts
+    frame = header + promised_stream_bytes + encoded_headers
+    
+    # Send the frame
+    sock.sendall(frame)

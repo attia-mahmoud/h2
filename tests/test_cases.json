@@ -294,134 +294,74 @@
     ]
   },
   {
-    "id": 73,
+    "id": 21,
     "description": "A SETTINGS frame with a length other than a multiple of 6 octets MUST be treated as a connection error (Section 5.4.1) of type FRAME_SIZE_ERROR.",
     "client_frames": [
       {
         "type": "SETTINGS",
-        "flags": [],
-        "raw_payload": true,
+        "extra_bytes": 5,
         "settings": {
-          "SETTINGS_MAX_CONCURRENT_STREAMS": 100
-        },
-        "extra_bytes": 1
-      }
-    ],
-    "server_frames": [
-      {
-        "type": "SETTINGS",
-        "flags": [],
-        "settings": {}
+          "MAX_CONCURRENT_STREAMS": 100
+        }
       }
     ]
   },
   {
-    "id": 74,
-    "description": "A server MUST NOT send a PUSH_PROMISE frame if it receives the SETTINGS_ENABLE_PUSH (0x02) parameter set to a value of 0. Testing proxy behavior when server violates this.",
+    "id": 22,
+    "description": "The initial value of SETTINGS_ENABLE_PUSH is 1. Any value other than 0 or 1 MUST be treated as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
     "client_frames": [
       {
         "type": "SETTINGS",
-        "flags": [],
         "settings": {
-          "SETTINGS_ENABLE_PUSH": 0
+          "ENABLE_PUSH": 2
+        }
+      }
+    ]
+  },
+  {
+    "id": 23,
+    "description": "A server MUST NOT explicitly set this value (SETTINGS_ENABLE_PUSH) to 1. A server MAY choose to omit this setting (SETTINGS_ENABLE_PUSH) when it sends a SETTINGS frame, but if a server does include a value, it MUST be 0.",
+    "server_frames": [
+      {
+        "type": "SETTINGS",
+        "settings": {
+          "ENABLE_PUSH": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": 24,
+    "description": "A server MUST NOT send a PUSH_PROMISE frame if it receives the SETTINGS_ENABLE_PUSH (0x02) parameter set to a value of 0.",
+    "client_frames": [
+      {
+        "type": "SETTINGS",
+        "settings": {
+          "ENABLE_PUSH": 0
         }
       },
       {
         "type": "HEADERS",
-        "flags": [
-          "END_STREAM",
-          "END_HEADERS"
-        ],
-        "stream_id": 1,
-        "headers": {
-          "pseudo_headers": {
-            "method": "GET",
-            "scheme": "http",
-            "path": "/",
-            "authority": "localhost"
-          },
-          "regular_headers": {
-            "accept": "text/html"
-          }
-        }
+        "stream_id": 1
       }
     ],
     "server_frames": [
       {
         "type": "PUSH_PROMISE",
-        "flags": [
-          "END_HEADERS"
-        ],
         "stream_id": 1,
-        "promised_stream_id": 2,
-        "headers": {
-          "pseudo_headers": {
-            "method": "GET",
-            "scheme": "http",
-            "path": "/style.css",
-            "authority": "localhost"
-          }
-        }
+        "promised_stream_id": 2
       }
     ]
   },
   {
-    "id": 76,
-    "description": "The initial value of SETTINGS_ENABLE_PUSH is 1. Any value other than 0 or 1 MUST be treated as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
+    "id": 25,
+    "description": "For SETTINGS_INITIAL_WINDOW_SIZE, values above the maximum flow-control window size of 2^31-1 (2147483647) MUST be treated as a connection error (Section 5.4.1) of type FLOW_CONTROL_ERROR.",
     "client_frames": [
       {
         "type": "SETTINGS",
-        "flags": [],
         "settings": {
-          "SETTINGS_ENABLE_PUSH": 2
+          "INITIAL_WINDOW_SIZE": 2147483648
         }
-      }
-    ],
-    "server_frames": [
-      {
-        "type": "SETTINGS",
-        "flags": [],
-        "settings": {}
-      }
-    ]
-  },
-  {
-    "id": 77,
-    "description": "A server MUST NOT explicitly set this value (SETTINGS_ENABLE_PUSH) to 1. A server MAY choose to omit this setting (SETTINGS_ENABLE_PUSH) when it sends a SETTINGS frame, but if a server does include a value, it MUST be 0.",
-    "client_frames": [
-      {
-        "type": "SETTINGS",
-        "flags": [],
-        "settings": {}
-      }
-    ],
-    "server_frames": [
-      {
-        "type": "SETTINGS",
-        "flags": [],
-        "settings": {
-          "SETTINGS_ENABLE_PUSH": 1
-        }
-      }
-    ]
-  },
-  {
-    "id": 80,
-    "description": "Values above the maximum flow-control window size of 2^31-1 (2147483647) MUST be treated as a connection error (Section 5.4.1) of type FLOW_CONTROL_ERROR.",
-    "client_frames": [
-      {
-        "type": "SETTINGS",
-        "flags": [],
-        "settings": {
-          "SETTINGS_INITIAL_WINDOW_SIZE": 2147483648
-        }
-      }
-    ],
-    "server_frames": [
-      {
-        "type": "SETTINGS",
-        "flags": [],
-        "settings": {}
       }
     ]
   },

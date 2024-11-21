@@ -1591,9 +1591,10 @@ class H2Connection:
 
         pushed_headers = _decode_headers(self.decoder, frame.data)
 
-        events = self.state_machine.process_input(
-            ConnectionInputs.RECV_PUSH_PROMISE
-        )
+        # events = self.state_machine.process_input(
+        #     ConnectionInputs.RECV_PUSH_PROMISE
+        # )
+        events = []
 
         try:
             stream = self._get_stream_by_id(frame.stream_id)

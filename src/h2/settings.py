@@ -321,7 +321,8 @@ def _validate_setting(setting, value):  # noqa: C901
             # return ErrorCodes.PROTOCOL_ERROR
     elif setting == SettingCodes.INITIAL_WINDOW_SIZE:
         if not 0 <= value <= 2147483647:  # 2^31 - 1
-            return ErrorCodes.FLOW_CONTROL_ERROR
+            # return ErrorCodes.FLOW_CONTROL_ERROR
+            pass
     elif setting == SettingCodes.MAX_FRAME_SIZE:
         if not 16384 <= value <= 16777215:  # 2^14 and 2^24 - 1
             return ErrorCodes.PROTOCOL_ERROR

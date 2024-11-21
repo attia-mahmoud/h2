@@ -73,6 +73,11 @@ class HTTP2Server:
             
             client_socket.sendall(self.conn.data_to_send())
             
+            # If there are no client frames, send server frames immediately
+            if not self.test_case.get('client_frames'):
+                for frame in self.test_case.get('server_frames', []):
+                    send_frame(self.conn, client_socket, frame, self.test_case['id'])
+            
             while not self.conn.state_machine.state == h2.connection.ConnectionState.CLOSED:
                 data = client_socket.recv(SSL_CONFIG.MAX_BUFFER_SIZE)
                 if not data:
@@ -85,9 +90,17 @@ class HTTP2Server:
                     logger.info("="*50)
                 
                 events = self.conn.receive_data(data)
+                # settings_changed = 0
                 for event in events:
                     # Log all events
                     log_h2_frame(logger, "RECEIVED", event)
+
+                    # if isinstance(event, h2.events.RemoteSettingsChanged):
+                    #     settings_changed += 1
+                    #     if settings_changed > 1:
+                    #         self.handle_event(event, client_socket)
+                    # else:
+                    #     self.handle_event(event, client_socket)
                     self.handle_event(event, client_socket)
                     
                 outbound_data = self.conn.data_to_send()

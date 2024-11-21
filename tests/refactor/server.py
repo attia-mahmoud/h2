@@ -101,13 +101,11 @@ class HTTP2Server:
         """Handle H2 events"""
         try:
             if isinstance(event, h2.events.ConnectionTerminated):
-                # Client sent GOAWAY, log it but don't try to send more data
                 logger.info(f"Received GOAWAY frame. Error code: {event.error_code}, "
                        f"Last Stream ID: {event.last_stream_id}")
-                return  # Exit immediately without trying to send more data
+                return
             
             if isinstance(event, h2.events.StreamEnded) or isinstance(event, h2.events.StreamReset):
-                # Only send response frames if we haven't received GOAWAY
                 if not self.conn.state_machine.state == h2.connection.ConnectionState.CLOSED:
                     for frame in self.test_case.get('server_frames', []):
                         send_frame(self.conn, client_socket, frame, self.test_case['id'])

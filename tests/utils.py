@@ -223,6 +223,8 @@ def send_frame(conn: h2.connection.H2Connection, sock: socket.socket,
         send_settings_frame(conn, sock, frame_data)
     elif frame_type == 'PUSH_PROMISE':
         send_push_promise_frame(conn, sock, frame_data)
+    elif frame_type == 'PING':
+        send_ping_frame(conn, sock, frame_data)
     
     # Send any pending data
     outbound_data = conn.data_to_send()

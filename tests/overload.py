@@ -2,8 +2,8 @@ import struct
 from typing import Iterable
 from hpack import Decoder, Encoder
 from h2.errors import ErrorCodes
-from h2.events import PriorityUpdated, StreamReset
-from h2.exceptions import FrameDataMissingError, NoSuchStreamError, ProtocolError, StreamClosedError
+from h2.events import PriorityUpdated, StreamReset, WindowUpdated
+from h2.exceptions import FlowControlError, FrameDataMissingError, NoSuchStreamError, ProtocolError, StreamClosedError
 from h2.frame_buffer import FrameBuffer
 from h2.settings import Settings, SettingCodes
 from h2 import settings
@@ -18,6 +18,7 @@ from hyperframe.exceptions import InvalidFrameError, InvalidDataError, InvalidPa
 from hyperframe.flags import Flags
 from h2.utilities import SizeLimitDict
 from h2.windows import WindowManager
+from h2 import utilities
 
 def redefine_methods(cls, methods_dict):
     for method_name, new_method in methods_dict.items():
@@ -451,6 +452,38 @@ def new_window_update_parse_body(self, data: memoryview) -> None:
 
     self.body_len = 4
 
+def new_receive_window_update_frame(self, frame):
+    """
+    Receive a WINDOW_UPDATE frame on the connection.
+    """
+    # hyperframe will take care of validating the window_increment.
+    # If we reach in here, we can assume a valid value.
+
+    events = self.state_machine.process_input(
+        ConnectionInputs.RECV_WINDOW_UPDATE
+    )
+
+    if frame.stream_id:
+        try:
+            stream = self._get_stream_by_id(frame.stream_id)
+            frames, stream_events = stream.receive_window_update(
+                frame.window_increment
+            )
+        except StreamClosedError:
+            return [], events
+    else:
+        # Increment our local flow control window.
+        self.outbound_flow_control_window = self.outbound_flow_control_window + frame.window_increment
+
+        # FIXME: Should we split this into one event per active stream?
+        window_updated_event = WindowUpdated()
+        window_updated_event.stream_id = 0
+        window_updated_event.delta = frame.window_increment
+        stream_events = [window_updated_event]
+        frames = []
+
+    return frames, events + stream_events
+
 redefine_methods(settings, {'_validate_setting': new_validate_setting})
 redefine_methods(H2Configuration, {'__init__': H2Configuration__init__})
 redefine_methods(H2Connection, {
@@ -459,7 +492,8 @@ redefine_methods(H2Connection, {
     '_receive_push_promise_frame': new_receive_push_promise_frame, 
     '_receive_priority_frame': new_receive_priority_frame,
     'initiate_connection': new_initiate_connection,
-    '_receive_rst_stream_frame': new_receive_rst_stream_frame
+    '_receive_rst_stream_frame': new_receive_rst_stream_frame,
+    '_receive_window_update_frame': new_receive_window_update_frame
 })
 redefine_methods(FrameBuffer, {'__init__': FrameBuffer__init__, 'add_data': new_add_data, '__next__': new__next__})
 redefine_methods(Frame, {'__init__': Frame__init__})

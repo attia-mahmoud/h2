@@ -476,41 +476,12 @@
     ]
   },
   {
-    "id": 117,
-    "description": "A WINDOW_UPDATE frame with a length other than 4 octets MUST be treated as a connection error (Section 5.4.1) of type FRAME_SIZE_ERROR.",
-    "client_frames": [
-      {
-        "type": "WINDOW_UPDATE",
-        "stream_id": 0,
-        "raw_payload": true,
-        "force_length": 2,
-        "increment": 1000
-      }
-    ],
-    "server_frames": [
-      {
-        "type": "SETTINGS",
-        "flags": [],
-        "settings": {}
-      }
-    ]
-  },
-  {
-    "id": 119,
+    "id": 34,
     "description": "A sender MUST NOT allow a flow-control window to exceed 2^31-1 octets. If a sender receives a WINDOW_UPDATE that causes a flow-control window to exceed this maximum, it MUST terminate either the stream or the connection, as appropriate.",
     "client_frames": [
       {
         "type": "WINDOW_UPDATE",
-        "stream_id": 0,
-        "raw_payload": true,
-        "increment": 2147483648
-      }
-    ],
-    "server_frames": [
-      {
-        "type": "SETTINGS",
-        "flags": [],
-        "settings": {}
+        "increment": 2147483647
       }
     ]
   },
@@ -1316,6 +1287,26 @@
             "authority": "example.com:443"
           }
         }
+      }
+    ],
+    "server_frames": [
+      {
+        "type": "SETTINGS",
+        "flags": [],
+        "settings": {}
+      }
+    ]
+  },
+  {
+    "id": 117,
+    "description": "A WINDOW_UPDATE frame with a length other than 4 octets MUST be treated as a connection error (Section 5.4.1) of type FRAME_SIZE_ERROR.",
+    "client_frames": [
+      {
+        "type": "WINDOW_UPDATE",
+        "stream_id": 0,
+        "raw_payload": true,
+        "force_length": 2,
+        "increment": 1000
       }
     ],
     "server_frames": [

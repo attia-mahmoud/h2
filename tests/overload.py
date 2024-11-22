@@ -6,6 +6,7 @@ from h2.events import PriorityUpdated
 from h2.exceptions import FrameDataMissingError, NoSuchStreamError, ProtocolError, StreamClosedError
 from h2.frame_buffer import FrameBuffer
 from h2.settings import Settings, SettingCodes
+from h2 import settings
 from h2.config import H2Configuration, DummyLogger
 from h2.connection import AllowedStreamIDs, ConnectionInputs, H2Connection, H2ConnectionStateMachine, _decode_headers
 from h2.stream import H2Stream, StreamClosedBy
@@ -402,7 +403,7 @@ def new_settings_parse_body(self, data: memoryview) -> None:
 
     self.body_len = body_len
 
-redefine_methods(Settings, {'_validate_setting': new_validate_setting})
+redefine_methods(settings, {'_validate_setting': new_validate_setting})
 redefine_methods(H2Configuration, {'__init__': H2Configuration__init__})
 redefine_methods(H2Connection, {
     '__init__': H2Connection__init__,

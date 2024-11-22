@@ -127,7 +127,7 @@ def run_all_tests():
             continue
             
         success = run_single_test(test_id, verbose=False)
-        print(f"Test {test_id}: {'No Error' if success else 'Error'}")
+        print(f"Test {test_id}: {'Pass' if success else 'Error'}")
 
 def main():
     parser = argparse.ArgumentParser(description='HTTP/2 Test Runner')

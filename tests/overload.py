@@ -28,21 +28,6 @@ def new_validate_setting(setting, value):  # noqa: C901
     Confirms that a specific setting has a well-formed value. If the setting is
     invalid, returns an error code. Otherwise, returns 0 (NO_ERROR).
     """
-    if setting == SettingCodes.ENABLE_PUSH:
-        if value not in (0, 1):
-            pass
-    elif setting == SettingCodes.INITIAL_WINDOW_SIZE:
-        if not 0 <= value <= 2147483647:  # 2^31 - 1
-            pass
-    elif setting == SettingCodes.MAX_FRAME_SIZE:
-        if not 16384 <= value <= 16777215:  # 2^14 and 2^24 - 1
-            pass
-    elif setting == SettingCodes.MAX_HEADER_LIST_SIZE:
-        if value < 0:
-            pass
-    elif setting == SettingCodes.ENABLE_CONNECT_PROTOCOL:
-        if value not in (0, 1):
-            pass
 
     return 0
 
@@ -170,7 +155,38 @@ def H2Connection__init__(self, config=None):
             AltSvcFrame: self._receive_alt_svc_frame,
             ExtensionFrame: self._receive_unknown_frame
         }
+
+def new_initiate_connection(self):
+    """
+    Provides any data that needs to be sent at the start of the connection.
+    Must be called for both clients and servers.
+    """
+    self.config.logger.debug("Initializing connection")
+
+    if self.config.skip_client_connection_preface:
+        return
     
+    # Only process SEND_SETTINGS if we're not skipping settings
+    if not self.config.skip_initial_settings:
+        self.state_machine.process_input(ConnectionInputs.SEND_SETTINGS)
+    
+    if self.config.client_side:
+        if self.config.incorrect_client_connection_preface:
+            preamble = b'PRI * HTTP/1.1\r\n\r\nSM\r\n\r\n'
+        else:
+            preamble = b'PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n'
+    else:
+        preamble = b''
+
+    # Only send SETTINGS frame if we're not skipping it
+    if not self.config.skip_initial_settings:
+        f = SettingsFrame(0)
+        for setting, value in self.local_settings.items():
+            f.settings[setting] = value
+        self._data_to_send += preamble + f.serialize()
+    else:
+        self._data_to_send += preamble
+
 def new_begin_new_stream(self, stream_id, allowed_ids):
     """
     Initiate a new stream.
@@ -392,7 +408,8 @@ redefine_methods(H2Connection, {
     '__init__': H2Connection__init__,
     '_begin_new_stream': new_begin_new_stream, 
     '_receive_push_promise_frame': new_receive_push_promise_frame, 
-    '_receive_priority_frame': new_receive_priority_frame
+    '_receive_priority_frame': new_receive_priority_frame,
+    'initiate_connection': new_initiate_connection
 })
 redefine_methods(FrameBuffer, {'__init__': FrameBuffer__init__, 'add_data': new_add_data, '__next__': new__next__})
 redefine_methods(Frame, {'__init__': Frame__init__})

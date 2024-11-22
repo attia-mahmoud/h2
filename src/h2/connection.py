@@ -489,30 +489,23 @@ class H2Connection:
         Must be called for both clients and servers.
         """
         self.config.logger.debug("Initializing connection")
-
-        if self.config.skip_client_connection_preface:
-            return
         
-        # Only process SEND_SETTINGS if we're not skipping settings
-        if not self.config.skip_initial_settings:
-            self.state_machine.process_input(ConnectionInputs.SEND_SETTINGS)
+        self.state_machine.process_input(ConnectionInputs.SEND_SETTINGS)
         
         if self.config.client_side:
-            if self.config.incorrect_client_connection_preface:
-                preamble = b'PRI * HTTP/1.1\r\n\r\nSM\r\n\r\n'
-            else:
-                preamble = b'PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n'
+            preamble = b'PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n'
         else:
             preamble = b''
 
-        # Only send SETTINGS frame if we're not skipping it
-        if not self.config.skip_initial_settings:
-            f = SettingsFrame(0)
-            for setting, value in self.local_settings.items():
-                f.settings[setting] = value
-            self._data_to_send += preamble + f.serialize()
-        else:
-            self._data_to_send += preamble
+
+        f = SettingsFrame(0)
+        for setting, value in self.local_settings.items():
+            f.settings[setting] = value
+        self.config.logger.debug(
+            "Send Settings frame: %s", self.local_settings
+        )
+        
+        self._data_to_send += preamble + f.serialize()
 
     def initiate_upgrade_connection(self, settings_header=None):
         """

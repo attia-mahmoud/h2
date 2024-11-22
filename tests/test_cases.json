@@ -486,60 +486,32 @@
     ]
   },
   {
-    "id": 123,
+    "id": 35,
     "description": "An endpoint MUST treat a change to SETTINGS_INITIAL_WINDOW_SIZE that causes any flow-control window to exceed the maximum size as a connection error (Section 5.4.1) of type FLOW_CONTROL_ERROR.",
     "client_frames": [
       {
         "type": "SETTINGS",
-        "flags": [],
         "settings": {
-          "SETTINGS_INITIAL_WINDOW_SIZE": 2147483648
+          "INITIAL_WINDOW_SIZE": 2147483648
         }
-      }
-    ],
-    "server_frames": [
-      {
-        "type": "SETTINGS",
-        "flags": [],
-        "settings": {}
       }
     ]
   },
   {
-    "id": 128,
+    "id": 36,
     "description": "If a CONTINUATION frame is received with a Stream Identifier field of 0x00, the recipient MUST respond with a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
     "client_frames": [
       {
         "type": "HEADERS",
         "stream_id": 1,
-        "headers": {
-          "pseudo_headers": {
-            "method": "GET",
-            "scheme": "http",
-            "path": "/",
-            "authority": "localhost"
-          }
+        "flags": {
+          "END_STREAM": false,
+          "END_HEADERS": false
         }
       },
       {
         "type": "CONTINUATION",
-        "stream_id": 0,
-        "raw_payload": true,
-        "headers": {
-          "pseudo_headers": {
-            "method": "GET",
-            "path": "/",
-            "scheme": "http",
-            "authority": "example.com"
-          }
-        }
-      }
-    ],
-    "server_frames": [
-      {
-        "type": "SETTINGS",
-        "flags": [],
-        "settings": {}
+        "stream_id": 0
       }
     ]
   },

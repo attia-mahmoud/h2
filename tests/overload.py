@@ -4,7 +4,7 @@ from hpack import Decoder, Encoder
 from h2.errors import ErrorCodes
 from h2.events import PriorityUpdated, StreamReset, WindowUpdated
 from h2.exceptions import FlowControlError, FrameDataMissingError, NoSuchStreamError, ProtocolError, StreamClosedError
-from h2.frame_buffer import FrameBuffer
+from h2.frame_buffer import CONTINUATION_BACKLOG, FrameBuffer
 from h2.settings import Settings, SettingCodes
 from h2 import settings
 from h2.config import H2Configuration, DummyLogger
@@ -484,6 +484,52 @@ def new_receive_window_update_frame(self, frame):
 
     return frames, events + stream_events
 
+
+def new_update_header_buffer(self, f):
+    """
+    Updates the internal header buffer. Returns a frame that should replace
+    the current one. May throw exceptions if this frame is invalid.
+    """
+    # Check if we're in the middle of a headers block. If we are, this
+    # frame *must* be a CONTINUATION frame with the same stream ID as the
+    # leading HEADERS or PUSH_PROMISE frame. Anything else is a
+    # ProtocolError. If the frame *is* valid, append it to the header
+    # buffer.
+    if self._headers_buffer:
+        stream_id = self._headers_buffer[0].stream_id
+        valid_frame = (
+            f is not None and
+            isinstance(f, ContinuationFrame) and
+            (f.stream_id == stream_id or f.stream_id == 0)
+        )
+        if not valid_frame:
+            raise ProtocolError("Invalid frame during header block.")
+
+        # Append the frame to the buffer.
+        self._headers_buffer.append(f)
+        if len(self._headers_buffer) > CONTINUATION_BACKLOG:
+            raise ProtocolError("Too many continuation frames received.")
+
+        # If this is the end of the header block, then build a mutant HEADERS frame
+        if 'END_HEADERS' in f.flags:
+            f = self._headers_buffer[0]
+            f.flags.add('END_HEADERS')
+            # If any frame in the sequence had stream_id=0, use that for testing
+            if any(frame.stream_id == 0 for frame in self._headers_buffer):
+                f.stream_id = 0
+            f.data = b''.join(x.data for x in self._headers_buffer)
+            self._headers_buffer = []
+        else:
+            f = None
+    elif (isinstance(f, (HeadersFrame, PushPromiseFrame)) and
+            'END_HEADERS' not in f.flags):
+        # This is the start of a headers block! Save the frame off and then
+        # act like we didn't receive one.
+        self._headers_buffer.append(f)
+        f = None
+
+    return f
+
 redefine_methods(settings, {'_validate_setting': new_validate_setting})
 redefine_methods(H2Configuration, {'__init__': H2Configuration__init__})
 redefine_methods(H2Connection, {
@@ -495,7 +541,12 @@ redefine_methods(H2Connection, {
     '_receive_rst_stream_frame': new_receive_rst_stream_frame,
     '_receive_window_update_frame': new_receive_window_update_frame
 })
-redefine_methods(FrameBuffer, {'__init__': FrameBuffer__init__, 'add_data': new_add_data, '__next__': new__next__})
+redefine_methods(FrameBuffer, {
+    '__init__': FrameBuffer__init__, 
+    'add_data': new_add_data, 
+    '__next__': new__next__, 
+    '_update_header_buffer': new_update_header_buffer
+})
 redefine_methods(Frame, {'__init__': Frame__init__})
 redefine_methods(RstStreamFrame, {'parse_body': new_rststream_parse_body})
 redefine_methods(SettingsFrame, {'parse_body': new_settings_parse_body})

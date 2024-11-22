@@ -12,7 +12,8 @@ import argparse
 import h2.connection
 from hyperframe.frame import (
     HeadersFrame, DataFrame, GoAwayFrame, WindowUpdateFrame, 
-    PingFrame, SettingsFrame, RstStreamFrame, PriorityFrame
+    PingFrame, SettingsFrame, RstStreamFrame, PriorityFrame,
+    ContinuationFrame
 )
 
 # Configure shared logging
@@ -229,6 +230,8 @@ def send_frame(conn: h2.connection.H2Connection, sock: socket.socket,
         send_goaway_frame(conn, sock, frame_data)
     elif frame_type == 'WINDOW_UPDATE':
         send_window_update_frame(conn, sock, frame_data)
+    elif frame_type == 'CONTINUATION':
+        send_continuation_frame(conn, sock, frame_data)
     
     # Send any pending data
     outbound_data = conn.data_to_send()
@@ -236,7 +239,19 @@ def send_frame(conn: h2.connection.H2Connection, sock: socket.socket,
         sock.sendall(outbound_data)
 
 def send_headers_frame(conn: h2.connection.H2Connection, sock, frame_data: Dict, id) -> None:
-    """Send a HEADERS frame"""
+    """Send a HEADERS frame
+    
+    Args:
+        conn: H2Connection instance
+        sock: Socket to send data on
+        frame_data: Frame configuration dictionary containing:
+            - stream_id (optional): Stream ID
+            - headers (optional): Headers to send
+            - flags (optional): Dictionary containing:
+                - END_STREAM (optional): Whether to end the stream
+                - END_HEADERS (optional): Whether to end the headers
+        - id: Test case ID
+    """
     stream_id = frame_data.get('stream_id', 1)
     headers = frame_data.get('headers')
     if headers:
@@ -246,6 +261,7 @@ def send_headers_frame(conn: h2.connection.H2Connection, sock, frame_data: Dict,
         
     flags = frame_data.get('flags', {})
     end_stream = flags.get('END_STREAM', True)
+    end_headers = flags.get('END_HEADERS', True)
     
     if frame_data.get('reserved_bit') or frame_data.get('raw_frame'):
         # Get encoded headers data
@@ -257,6 +273,8 @@ def send_headers_frame(conn: h2.connection.H2Connection, sock, frame_data: Dict,
         frame_flags = 0x4  # END_HEADERS
         if end_stream:
             frame_flags |= 0x1  # END_STREAM
+        if end_headers:
+            frame_flags |= 0x4  # END_HEADERS
             
         # Create the length field (24 bits)
         length_bytes = length.to_bytes(3, byteorder='big')
@@ -279,11 +297,17 @@ def send_headers_frame(conn: h2.connection.H2Connection, sock, frame_data: Dict,
         
         conn.state_machine.process_input(h2.connection.ConnectionInputs.SEND_HEADERS)
     else:
-        conn.send_headers(
-            stream_id=stream_id,
-            headers=headers,
-            end_stream=end_stream
-        )
+        frame = HeadersFrame(stream_id)
+        frame.data = conn.encoder.encode(headers)
+        
+        if end_stream:
+            frame.flags.add('END_STREAM')
+        if end_headers:
+            frame.flags.add('END_HEADERS')
+        
+        # Serialize and send
+        serialized = frame.serialize()
+        sock.sendall(serialized)
 
 def send_data_frame(conn: h2.connection.H2Connection, frame_data: Dict) -> None:
     """Send a DATA frame"""
@@ -528,6 +552,42 @@ def send_window_update_frame(conn: h2.connection.H2Connection, sock: socket.sock
     
     frame = WindowUpdateFrame(stream_id)
     frame.window_increment = increment
+    
+    # Serialize and send
+    serialized = frame.serialize()
+    sock.sendall(serialized)
+
+def send_continuation_frame(conn: h2.connection.H2Connection, sock: socket.socket, frame_data: Dict):
+    """Send a CONTINUATION frame
+    
+    Args:
+        conn: H2Connection instance
+        sock: Socket to send data on
+        frame_data: Frame configuration dictionary containing:
+            - stream_id (required): Stream ID (must match the stream of preceding HEADERS/PUSH_PROMISE)
+            - headers (optional): Additional headers to send
+            - flags (optional): Dictionary of flags to set
+            - end_headers (optional): Whether this is the last CONTINUATION frame (default: True)
+    """
+    stream_id = frame_data.get('stream_id')
+    headers = frame_data.get('headers')
+    flags = frame_data.get('flags', {})
+    end_headers = flags.get('END_HEADERS', True)
+    
+    # Format and encode headers
+    if headers:
+        headers = format_headers(headers)
+    else:
+        headers = [('accept-encoding', 'gzip, deflate, br')]
+
+    encoded_headers = conn.encoder.encode(headers)
+    
+    frame = ContinuationFrame(stream_id)
+    frame.data = encoded_headers
+    
+    # Set END_HEADERS flag if this is the last CONTINUATION frame
+    if end_headers:
+        frame.flags.add('END_HEADERS')
     
     # Serialize and send
     serialized = frame.serialize()

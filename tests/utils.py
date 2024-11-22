@@ -16,7 +16,7 @@ from hyperframe.frame import (
 )
 
 # Configure shared logging
-def setup_logging(name: str) -> logging.Logger:
+def setup_logging(name: str):
     """Setup logging configuration"""
     # Set hpack and h2 loggers to INFO level to suppress debug messages
     logging.getLogger('hpack').setLevel(logging.INFO)
@@ -71,7 +71,7 @@ class SSL_CONFIG:
     ALPN_PROTOCOLS = ['h2c']
     MAX_BUFFER_SIZE = 65535
 
-def create_ssl_context(test_case: Dict, is_client: bool = True) -> ssl.SSLContext:
+def create_ssl_context(test_case: Dict, is_client: bool = True):
     """Create SSL context for client or server"""
     if is_client:
         context = ssl.create_default_context()
@@ -89,7 +89,7 @@ def create_ssl_context(test_case: Dict, is_client: bool = True) -> ssl.SSLContex
     context.set_alpn_protocols([protocol])
     return context
 
-def create_socket(host: str, port: int, is_server: bool = False) -> socket.socket:
+def create_socket(host: str, port: int, is_server: bool = False):
     """Create and configure a socket"""
     sock = socket.socket()
     if is_server:
@@ -102,7 +102,7 @@ def handle_socket_error(logger: logging.Logger, error: Exception, context: str):
     logger.error(f"Socket error in {context}: {error}", exc_info=True)
     raise
 
-def log_h2_frame(logger: logging.Logger, direction: str, event: Any) -> None:
+def log_h2_frame(logger: logging.Logger, direction: str, event: Any):
     """Log HTTP/2 frame details"""
     event_type = event.__class__.__name__
     
@@ -132,7 +132,11 @@ def log_h2_frame(logger: logging.Logger, direction: str, event: Any) -> None:
     elif isinstance(event, h2.events.RemoteSettingsChanged):
         logger.info("Changed Settings:")
         for setting, value in event.changed_settings.items():
-            logger.info(f"  {setting.name}: {value}")
+            if isinstance(setting, int):
+                setting_name = setting
+            else:
+                setting_name = setting.name
+            logger.info(f"  {setting_name}: {value}")
             
     elif isinstance(event, h2.events.WindowUpdated):
         logger.info(f"Window Update Delta: {event.delta}")
@@ -148,7 +152,7 @@ def log_h2_frame(logger: logging.Logger, direction: str, event: Any) -> None:
         
     logger.info(separator)
 
-def load_test_case(logger: logging.Logger, test_id: int) -> Optional[Dict]:
+def load_test_case(logger: logging.Logger, test_id: int):
     """Load a specific test case by ID from the test cases file"""
     try:
         with open('tests/test_cases.json', 'r') as f:
@@ -180,7 +184,7 @@ CONFIG_SETTINGS = {
     'normalize_outbound_headers': False,
 }
 
-def format_headers(headers_dict: Dict) -> List[Tuple[str, str]]:
+def format_headers(headers_dict: Dict):
     """Convert headers dictionary to h2 compatible format
     Args:
         headers_dict: Dictionary containing pseudo_headers and regular_headers
@@ -195,7 +199,7 @@ def format_headers(headers_dict: Dict) -> List[Tuple[str, str]]:
     return headers
 
 def send_frame(conn: h2.connection.H2Connection, sock: socket.socket, 
-               frame_data: Dict, id) -> None:
+               frame_data: Dict, id):
     """Send a single H2 frame
     Args:
         conn: H2Connection instance
@@ -293,7 +297,7 @@ def send_data_frame(conn: h2.connection.H2Connection, frame_data: Dict) -> None:
         end_stream=flags.get('END_STREAM', True)
     )
 
-def send_unknown_frame(sock: socket.socket, frame_data: Dict) -> None:
+def send_unknown_frame(sock: socket.socket, frame_data: Dict):
     """Send an UNKNOWN frame"""
     payload = frame_data.get('payload', '').encode('utf-8')
     frame_type_id = frame_data.get('frame_type_id')
@@ -314,7 +318,7 @@ def send_unknown_frame(sock: socket.socket, frame_data: Dict) -> None:
     # Send raw frame
     sock.sendall(header + payload)
 
-def send_rst_stream_frame(conn: h2.connection.H2Connection, sock: socket.socket, frame_data: Dict) -> None:
+def send_rst_stream_frame(conn: h2.connection.H2Connection, sock: socket.socket, frame_data: Dict):
     """Send a RST_STREAM frame"""
     stream_id = frame_data.get('stream_id', 1)
     if frame_data.get('payload_length'):
@@ -345,21 +349,32 @@ def send_priority_frame(conn, sock, frame_data):
     frame = frame.serialize()
     sock.sendall(frame)
 
-def send_settings_frame(conn: h2.connection.H2Connection, sock: socket.socket, frame_data: Dict) -> None:
+def send_settings_frame(conn: h2.connection.H2Connection, sock: socket.socket, frame_data: Dict):
     """Send a SETTINGS frame with optional stream ID"""
     settings = frame_data.get('settings', {})
     flags = frame_data.get('flags', {})
     stream_id = frame_data.get('stream_id', 0)  # Default to 0 as per spec
     
+    # Convert settings keys to appropriate type (int or SettingCodes)
+    processed_settings = {}
+    for name, value in settings.items():
+        # Try to convert string to int for numeric settings
+        try:
+            setting_id = int(name)
+            processed_settings[setting_id] = value
+        except ValueError:
+            # If not numeric, treat as a valid setting name
+            setting_id = getattr(h2.settings.SettingCodes, name)
+            processed_settings[setting_id] = value
+    
     # If we want to bypass h2 validation and send raw frame
-    if stream_id != 0 or 'payload_length' in frame_data:
+    if (stream_id != 0 or 
+        'payload_length' in frame_data or 
+        'raw_payload' in frame_data or 
+        any(isinstance(k, int) and k not in h2.settings.SettingCodes for k in processed_settings)):
+        
         settings_payload = b''
-
-        for name, value in settings.items():
-            if isinstance(name, str):
-                setting_id = getattr(h2.settings.SettingCodes, name)
-            else:
-                setting_id = name
+        for setting_id, value in processed_settings.items():
             # Each setting is a 16-bit ID and 32-bit value
             settings_payload += setting_id.to_bytes(2, byteorder='big')
             settings_payload += value.to_bytes(4, byteorder='big')
@@ -385,12 +400,7 @@ def send_settings_frame(conn: h2.connection.H2Connection, sock: socket.socket, f
         frame = SettingsFrame(stream_id=stream_id)
         
         # Add settings
-        for name, value in settings.items():
-            if isinstance(name, str):
-                setting_id = getattr(h2.settings.SettingCodes, name)
-            else:
-                setting_id = name
-            frame.settings[setting_id] = value
+        frame.settings.update(processed_settings)
         
         # Add flags if specified
         if 'ACK' in flags:
@@ -400,7 +410,7 @@ def send_settings_frame(conn: h2.connection.H2Connection, sock: socket.socket, f
         serialized = frame.serialize()
         sock.sendall(serialized)
 
-def send_push_promise_frame(conn: h2.connection.H2Connection, sock: socket.socket, frame_data: Dict) -> None:
+def send_push_promise_frame(conn: h2.connection.H2Connection, sock: socket.socket, frame_data: Dict):
     """Send a PUSH_PROMISE frame"""
     stream_id = frame_data.get('stream_id', 1)
     promised_stream_id = frame_data.get('promised_stream_id', 2)

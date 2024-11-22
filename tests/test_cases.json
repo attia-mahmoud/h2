@@ -366,56 +366,26 @@
     ]
   },
   {
-    "id": 81,
-    "description": "The value advertised by an endpoint MUST be between initial value (2^14 = 16,384) and maximum allowed frame size (2^24-1 = 16,777,215 octets), inclusive. Values outside this range MUST be treated as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
+    "id": 26,
+    "description": "The value advertised by an endpoint MUST be between initial value (2^14 = 16,384) and maximum allowed frame size (2^24-1 = 16,777,215 octets), inclusive.",
     "client_frames": [
       {
         "type": "SETTINGS",
-        "flags": [],
         "settings": {
-          "SETTINGS_MAX_FRAME_SIZE": 16777216
+          "MAX_FRAME_SIZE": 16777216
         }
-      }
-    ],
-    "server_frames": [
-      {
-        "type": "SETTINGS",
-        "flags": [],
-        "settings": {}
       }
     ]
   },
   {
-    "id": 83,
+    "id": 27,
     "description": "An endpoint that receives a SETTINGS frame with any unknown or unsupported identifier MUST ignore that setting.",
     "client_frames": [
       {
         "type": "SETTINGS",
-        "raw_payload": true,
-        "unknown_setting": {
-          "id": 15,
-          "value": 42
+        "settings": {
+          "12345": 16777216
         }
-      },
-      {
-        "type": "HEADERS",
-        "flags": ["END_STREAM", "END_HEADERS"],
-        "stream_id": 1,
-        "headers": {
-          "pseudo_headers": {
-            "method": "GET",
-            "scheme": "http",
-            "path": "/",
-            "authority": "localhost"
-          }
-        }
-      }
-    ],
-    "server_frames": [
-      {
-        "type": "SETTINGS",
-        "flags": [],
-        "settings": {}
       }
     ]
   },

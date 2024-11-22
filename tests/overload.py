@@ -152,7 +152,7 @@ def H2Connection__init__(self, config=None):
             RstStreamFrame: self._receive_rst_stream_frame,
             PriorityFrame: self._receive_priority_frame,
             GoAwayFrame: self._receive_goaway_frame,
-            ContinuationFrame: self._receive_continuation,
+            ContinuationFrame: self._receive_naked_continuation,
             AltSvcFrame: self._receive_alt_svc_frame,
             ExtensionFrame: self._receive_unknown_frame
         }
@@ -593,6 +593,41 @@ def new_send_data(self, stream_id, data, end_stream=False, pad_length=None):
     )
     assert self.outbound_flow_control_window >= 0
 
+def new_receive_naked_continuation(self, frame):
+    """
+    A CONTINUATION frame has been received. This is only valid if we're already
+    in the middle of receiving headers.
+    """
+    # If we're not in the middle of receiving headers, this is a problem.
+    if not self._header_frames:
+        # Skip triggering the error by ignoring the frame
+        return [], []
+        # Original error code:
+        # return self._receive_naked_continuation(frame)
+
+    # Otherwise, keep receiving headers.
+    self._header_frames.append(frame)
+    
+    if 'END_HEADERS' in frame.flags:
+        # End of headers, process them.
+        headers = _decode_headers(
+            self.decoder,
+            b''.join(f.data for f in self._header_frames)
+        )
+        self._header_frames = []
+        
+        # Process according to the type of the first frame.
+        first = self._header_frames[0]
+        if isinstance(first, HeadersFrame):
+            return self._receive_headers(first, headers)
+        elif isinstance(first, PushPromiseFrame):
+            return self._receive_push_promise(first, headers)
+        else:
+            # This shouldn't happen, but handle it gracefully
+            return [], []
+    
+    return [], []
+
 redefine_methods(settings, {'_validate_setting': new_validate_setting})
 redefine_methods(H2Configuration, {'__init__': H2Configuration__init__})
 redefine_methods(H2Connection, {
@@ -603,7 +638,8 @@ redefine_methods(H2Connection, {
     'initiate_connection': new_initiate_connection,
     '_receive_rst_stream_frame': new_receive_rst_stream_frame,
     '_receive_window_update_frame': new_receive_window_update_frame,
-    'send_data': new_send_data
+    'send_data': new_send_data,
+    '_receive_naked_continuation': new_receive_naked_continuation
 })
 redefine_methods(FrameBuffer, {
     '__init__': FrameBuffer__init__, 

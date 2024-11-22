@@ -127,6 +127,15 @@ def log_h2_frame(logger: logging.Logger, direction: str, event: Any):
         for k, v in headers.items():
             logger.info(f"  {k}: {v}")
             
+    elif isinstance(event, h2.events.PushedStreamReceived):
+        # Add PUSH_PROMISE specific logging
+        logger.info(f"Parent Stream ID: {event.parent_stream_id}")
+        logger.info(f"Pushed Stream ID: {event.pushed_stream_id}")
+        headers = dict(event.headers)
+        logger.info("Push Promise Headers:")
+        for k, v in headers.items():
+            logger.info(f"  {k}: {v}")
+            
     elif isinstance(event, h2.events.SettingsAcknowledged):
         logger.info("Settings: ACK received")
         
@@ -223,7 +232,7 @@ def send_frame(conn: h2.connection.H2Connection, sock: socket.socket,
     elif frame_type == 'SETTINGS':
         send_settings_frame(conn, sock, frame_data)
     elif frame_type == 'PUSH_PROMISE':
-        send_push_promise_frame(conn, sock, frame_data)
+        send_push_promise_frame(conn, sock, frame_data, id)
     elif frame_type == 'PING':
         send_ping_frame(conn, sock, frame_data)
     elif frame_type == 'GOAWAY':
@@ -448,17 +457,19 @@ def send_settings_frame(conn: h2.connection.H2Connection, sock: socket.socket, f
         serialized = frame.serialize()
         sock.sendall(serialized)
 
-def send_push_promise_frame(conn: h2.connection.H2Connection, sock: socket.socket, frame_data: Dict):
+def send_push_promise_frame(conn: h2.connection.H2Connection, sock: socket.socket, frame_data: Dict, id):
     """Send a PUSH_PROMISE frame"""
     stream_id = frame_data.get('stream_id', 1)
     promised_stream_id = frame_data.get('promised_stream_id', 2)
     headers = frame_data.get('headers')
-    flags = frame_data.get('flags', [])
+    flags = frame_data.get('flags', {})
+    end_headers = flags.get('END_HEADERS', True)
+    end_stream = flags.get('END_STREAM', True)
     
     if headers:
         headers = format_headers(headers)
     else:
-        headers = [(':method', 'GET'), (':path', '/'), (':authority', 'localhost'), (':scheme', 'http'), ('user-agent', f'test {id}')]
+        headers = [(':status', '200'), ('user-agent', f'test {id}')]
     
     # Get encoded headers from the connection's encoder
     encoded_headers = conn.encoder.encode(headers)
@@ -474,7 +485,11 @@ def send_push_promise_frame(conn: h2.connection.H2Connection, sock: socket.socke
     # Create flags byte
     flags_byte = 0
     # END_HEADERS flag
-    flags_byte |= 0x4
+    if end_headers:
+        flags_byte |= 0x4
+    # END_STREAM flag
+    if end_stream:
+        flags_byte |= 0x1
     
     # Create frame header
     header = (

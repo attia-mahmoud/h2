@@ -536,5 +536,55 @@
         "stream_id": 1
       }
     ]
+  },
+  {
+    "id": 38,
+    "description": "A CONTINUATION frame MUST be preceded by a HEADERS, PUSH_PROMISE or CONTINUATION frame without the END_HEADERS flag set.",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "stream_id": 1
+      }
+    ],
+    "server_frames": [
+      {
+        "type": "PUSH_PROMISE",
+        "stream_id": 1,
+        "promised_stream_id": 2,
+        "flags": {
+          "END_STREAM": false,
+          "END_HEADERS": true
+        }
+      },
+      {
+        "type": "CONTINUATION",
+        "stream_id": 2
+      }
+    ]
+  },
+  {
+    "id": 39,
+    "description": "A CONTINUATION frame MUST be preceded by a HEADERS, PUSH_PROMISE or CONTINUATION frame without the END_HEADERS flag set.",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "stream_id": 1,
+        "flags": {
+          "END_STREAM": false,
+          "END_HEADERS": false
+        }
+      },
+      {
+        "type": "CONTINUATION",
+        "stream_id": 1,
+        "headers": {
+          "accept": "application/json"
+        }
+      },
+      {
+        "type": "CONTINUATION",
+        "stream_id": 1
+      }
+    ]
   }
 ]

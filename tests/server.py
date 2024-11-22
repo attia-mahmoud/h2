@@ -91,22 +91,14 @@ class HTTP2Server:
                     logger.info("="*50)
                 
                 events = self.conn.receive_data(data)
-                # settings_changed = 0
                 for event in events:
-                    # Log all events
                     log_h2_frame(logger, "RECEIVED", event)
-
-                    # if isinstance(event, h2.events.RemoteSettingsChanged):
-                    #     settings_changed += 1
-                    #     if settings_changed > 1:
-                    #         self.handle_event(event, client_socket)
-                    # else:
-                    #     self.handle_event(event, client_socket)
                     self.handle_event(event, client_socket)
                     
                 outbound_data = self.conn.data_to_send()
                 if outbound_data:
                     client_socket.sendall(outbound_data)
+                
                     
         except Exception as e:
             handle_socket_error(logger, e, "connection handler")

@@ -71,8 +71,8 @@ class HTTP2Client:
                     self._receive_response(timeout=1.0)
             
             # Add additional wait time for any remaining server frames
-            if self.test_case.get('server_frames'):
-                self._receive_response(timeout=1.0)
+            # if self.test_case.get('server_frames'):
+            self._receive_response(timeout=1.0)
             
         except Exception as e:
             logger.error(f"Error sending frames: {e}")

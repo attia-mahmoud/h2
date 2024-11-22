@@ -71,8 +71,8 @@ class HTTP2Client:
                     self._receive_response(timeout=1.0)
             
             # Add additional wait time for any remaining server frames
-            # if self.test_case.get('server_frames'):
-            self._receive_response(timeout=1.0)
+            if frame.get('type') != 'GOAWAY':
+                self._receive_response(timeout=1.0)
             
         except Exception as e:
             logger.error(f"Error sending frames: {e}")
@@ -122,7 +122,7 @@ class HTTP2Client:
     
     def close(self):
         """Close the connection gracefully"""
-        if self.conn and self.sock:
+        if self.conn and self.sock and self.test_case.get('client_frames', [])[-1].get('type') != 'GOAWAY':
             try:
                 # Only send GOAWAY if connection is still active
                 if not self.conn.state_machine.state == h2.connection.ConnectionState.CLOSED:

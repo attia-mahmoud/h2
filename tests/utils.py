@@ -225,6 +225,10 @@ def send_frame(conn: h2.connection.H2Connection, sock: socket.socket,
         send_push_promise_frame(conn, sock, frame_data)
     elif frame_type == 'PING':
         send_ping_frame(conn, sock, frame_data)
+    elif frame_type == 'GOAWAY':
+        send_goaway_frame(conn, sock, frame_data)
+    elif frame_type == 'WINDOW_UPDATE':
+        send_window_update_frame(conn, sock, frame_data)
     
     # Send any pending data
     outbound_data = conn.data_to_send()
@@ -456,3 +460,75 @@ def send_push_promise_frame(conn: h2.connection.H2Connection, sock: socket.socke
     
     # Send the frame
     sock.sendall(frame)
+
+def send_ping_frame(conn: h2.connection.H2Connection, sock: socket.socket, frame_data: Dict):
+    """Send a PING frame
+    
+    Args:
+        conn: H2Connection instance
+        sock: Socket to send data on
+        frame_data: Frame configuration dictionary containing:
+            - data (optional): 8 bytes of data to include in the PING
+            - flags (optional): Dictionary of flags to set
+    """
+    flags = frame_data.get('flags', {})
+    data = frame_data.get('data', b'\x00' * 8)  # Default to 8 zero bytes
+    stream_id = frame_data.get('stream_id', 0)
+    
+    # Convert string data to bytes if necessary
+    if isinstance(data, str):
+        data = data.encode('utf-8')
+    
+    frame = PingFrame(stream_id)
+    frame.data = data
+    
+    # Add ACK flag if specified
+    if 'ACK' in flags:
+        frame.flags.add('ACK')
+    
+    # Serialize and send
+    serialized = frame.serialize()
+    sock.sendall(serialized)
+
+def send_goaway_frame(conn: h2.connection.H2Connection, sock: socket.socket, frame_data: Dict):
+    """Send a GOAWAY frame
+    
+    Args:
+        conn: H2Connection instance
+        sock: Socket to send data on
+        frame_data: Frame configuration dictionary containing:
+            - last_stream_id (optional): Last stream ID processed
+            - error_code (optional): Error code to send (default: 0 - NO_ERROR)
+            - additional_data (optional): Debug data to include
+    """
+    last_stream_id = frame_data.get('last_stream_id', 0)
+    error_code = frame_data.get('error_code', 0)
+    stream_id = frame_data.get('stream_id', 0)
+    
+    frame = GoAwayFrame(stream_id)
+    frame.last_stream_id = last_stream_id
+    frame.error_code = error_code
+    
+    # Serialize and send
+    serialized = frame.serialize()
+    sock.sendall(serialized)
+
+def send_window_update_frame(conn: h2.connection.H2Connection, sock: socket.socket, frame_data: Dict):
+    """Send a WINDOW_UPDATE frame
+    
+    Args:
+        conn: H2Connection instance
+        sock: Socket to send data on
+        frame_data: Frame configuration dictionary containing:
+            - stream_id (optional): Stream ID (0 for connection-level updates)
+            - increment (optional): Window size increment (default: 1024)
+    """
+    stream_id = frame_data.get('stream_id', 0)
+    increment = frame_data.get('increment', 1024)
+    
+    frame = WindowUpdateFrame(stream_id)
+    frame.window_increment = increment
+    
+    # Serialize and send
+    serialized = frame.serialize()
+    sock.sendall(serialized)

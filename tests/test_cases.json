@@ -436,92 +436,42 @@
     ]
   },
   {
-    "id": 106,
+    "id": 30,
     "description": "If a PING frame is received with a Stream Identifier field value other than 0x00, the recipient MUST respond with a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
     "client_frames": [
       {
-        "type": "SETTINGS",
-        "flags": [],
-        "settings": {}
+        "type": "PING",
+        "stream_id": 1
       }
-    ],
-    "server_frames": [
+    ]
+  },
+  {
+    "id": 31,
+    "description": "Receipt of a PING frame with a length field value other than 8 MUST be treated as a connection error (Section 5.4.1) of type FRAME_SIZE_ERROR.",
+    "client_frames": [
       {
         "type": "PING",
-        "flags": [],
-        "stream_id": 1,
-        "raw_payload": true,
-        "payload": "12345678"
+        "data": "1234"
       }
     ]
   },
   {
-    "name": "PING Invalid Length",
-    "section": "6.7",
-    "cases": [
-      {
-        "id": 107,
-        "description": "Receipt of a PING frame with a length field value other than 8 MUST be treated as a connection error (Section 5.4.1) of type FRAME_SIZE_ERROR.",
-            "client_frames": [
-          {
-            "type": "SETTINGS",
-            "flags": [],
-            "settings": {}
-          }
-        ],
-        "server_frames": [
-          {
-            "type": "SETTINGS",
-            "flags": [],
-            "settings": {}
-          },
-          {
-            "type": "PING",
-            "flags": [],
-            "raw_payload": true,
-            "payload": "1234",
-            "force_length": 4
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "id": 109,
+    "id": 32,
     "description": "An endpoint MUST treat a GOAWAY frame with a stream identifier other than 0x00 as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
     "client_frames": [
       {
-        "type": "SETTINGS",
-        "flags": [],
-        "settings": {}
-      }
-    ],
-    "server_frames": [
-      {
         "type": "GOAWAY",
-        "stream_id": 1,
-        "raw_payload": true,
-        "last_stream_id": 0,
-        "error_code": "NO_ERROR"
+        "stream_id": 1
       }
     ]
   },
   {
-    "id": 114,
-    "description": "A receiver MUST treat the receipt of a WINDOW_UPDATE frame with a flow-control window increment of 0 as a stream error (Section 5.4.2) of type PROTOCOL_ERROR; errors on the connection flow-control window MUST be treated as a connection error (Section 5.4.1).",
+    "id": 33,
+    "description": "A receiver MUST treat the receipt of a WINDOW_UPDATE frame with a flow-control window increment of 0 as a stream error (Section 5.4.2) of type PROTOCOL_ERROR.",
     "client_frames": [
       {
         "type": "WINDOW_UPDATE",
-        "stream_id": 0,
-        "raw_payload": true,
         "increment": 0
-      }
-    ],
-    "server_frames": [
-      {
-        "type": "SETTINGS",
-        "flags": [],
-        "settings": {}
       }
     ]
   },

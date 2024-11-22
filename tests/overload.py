@@ -16,10 +16,8 @@ from hyperframe.frame import (Frame, RstStreamFrame, HeadersFrame, PushPromiseFr
                               ExtensionFrame, _STRUCT_HL, _STRUCT_L)
 from hyperframe.exceptions import InvalidFrameError, InvalidDataError, InvalidPaddingError
 from hyperframe.flags import Flags
-
 from h2.utilities import SizeLimitDict
 from h2.windows import WindowManager
-from h2.stream import H2StreamStateMachine
 
 def redefine_methods(cls, methods_dict):
     for method_name, new_method in methods_dict.items():
@@ -444,6 +442,15 @@ def new_push_promise_parse_body(self, data: memoryview):
     if self.pad_length and self.pad_length >= self.body_len:
         raise InvalidPaddingError("Padding is too long.")
 
+
+def new_window_update_parse_body(self, data: memoryview) -> None:
+    try:
+        self.window_increment = _STRUCT_L.unpack(data)[0]
+    except struct.error:
+        raise InvalidFrameError("Invalid WINDOW_UPDATE body")
+
+    self.body_len = 4
+
 redefine_methods(settings, {'_validate_setting': new_validate_setting})
 redefine_methods(H2Configuration, {'__init__': H2Configuration__init__})
 redefine_methods(H2Connection, {
@@ -459,3 +466,4 @@ redefine_methods(Frame, {'__init__': Frame__init__})
 redefine_methods(RstStreamFrame, {'parse_body': new_rststream_parse_body})
 redefine_methods(SettingsFrame, {'parse_body': new_settings_parse_body})
 redefine_methods(PushPromiseFrame, {'parse_body': new_push_promise_parse_body})
+redefine_methods(WindowUpdateFrame, {'parse_body': new_window_update_parse_body})

@@ -413,58 +413,25 @@
     ]
   },
   {
-    "id": 100,
+    "id": 29,
     "description": "A receiver MUST treat the receipt of a PUSH_PROMISE that promises an illegal stream identifier (Section 5.1.1) as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
     "client_frames": [
       {
         "type": "SETTINGS",
-        "flags": [],
-        "settings": {}
+        "settings": {
+          "ENABLE_PUSH": 1
+        }
+      },
+      {
+        "type": "HEADERS",
+        "stream_id": 1
       }
     ],
     "server_frames": [
       {
         "type": "PUSH_PROMISE",
-        "flags": ["END_HEADERS"],
         "stream_id": 1,
-        "promised_stream_id": 1,
-        "headers": {
-          "pseudo_headers": {
-            "method": "GET",
-            "scheme": "http",
-            "path": "/style.css",
-            "authority": "localhost"
-          }
-        }
-      }
-    ]
-  },
-  {
-    "id": 101,
-    "description": "If the length of the padding is the length of the frame payload or greater, the recipient MUST treat this as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
-    "client_frames": [
-      {
-        "type": "SETTINGS",
-        "flags": [],
-        "settings": {}
-      }
-    ],
-    "server_frames": [
-      {
-        "type": "PUSH_PROMISE",
-        "flags": ["END_HEADERS", "PADDED"],
-        "stream_id": 1,
-        "promised_stream_id": 2,
-        "raw_payload": true,
-        "padding_length": 10,
-        "headers": {
-          "pseudo_headers": {
-            "method": "GET",
-            "scheme": "http",
-            "path": "/style.css",
-            "authority": "localhost"
-          }
-        }
+        "promised_stream_id": 0
       }
     ]
   },

@@ -13,8 +13,8 @@ from h2.stream import H2Stream, StreamClosedBy
 from hyperframe.frame import (Frame, RstStreamFrame, HeadersFrame, PushPromiseFrame, SettingsFrame, 
                               DataFrame, WindowUpdateFrame, PingFrame, RstStreamFrame, 
                               PriorityFrame, GoAwayFrame, ContinuationFrame, AltSvcFrame, 
-                              ExtensionFrame, _STRUCT_HL)
-from hyperframe.exceptions import InvalidFrameError, InvalidDataError
+                              ExtensionFrame, _STRUCT_HL, _STRUCT_L)
+from hyperframe.exceptions import InvalidFrameError, InvalidDataError, InvalidPaddingError
 from hyperframe.flags import Flags
 
 from h2.utilities import SizeLimitDict
@@ -413,7 +413,7 @@ def new_rststream_parse_body(self, data: memoryview):
 
     self.body_len = 4
 
-def new_settings_parse_body(self, data: memoryview) -> None:
+def new_settings_parse_body(self, data: memoryview):
     body_len = 0
     for i in range(0, len(data), 6):
         try:
@@ -425,6 +425,24 @@ def new_settings_parse_body(self, data: memoryview) -> None:
         body_len += 6
 
     self.body_len = body_len
+
+def new_push_promise_parse_body(self, data: memoryview):
+    padding_data_length = self.parse_padding_data(data)
+
+    try:
+        self.promised_stream_id = _STRUCT_L.unpack(
+            data[padding_data_length:padding_data_length + 4]
+        )[0]
+    except struct.error:
+        raise InvalidFrameError("Invalid PUSH_PROMISE body")
+
+    self.data = (
+        data[padding_data_length + 4:len(data)-self.pad_length].tobytes()
+    )
+    self.body_len = len(data)
+
+    if self.pad_length and self.pad_length >= self.body_len:
+        raise InvalidPaddingError("Padding is too long.")
 
 redefine_methods(settings, {'_validate_setting': new_validate_setting})
 redefine_methods(H2Configuration, {'__init__': H2Configuration__init__})
@@ -440,3 +458,4 @@ redefine_methods(FrameBuffer, {'__init__': FrameBuffer__init__, 'add_data': new_
 redefine_methods(Frame, {'__init__': Frame__init__})
 redefine_methods(RstStreamFrame, {'parse_body': new_rststream_parse_body})
 redefine_methods(SettingsFrame, {'parse_body': new_settings_parse_body})
+redefine_methods(PushPromiseFrame, {'parse_body': new_push_promise_parse_body})

@@ -239,7 +239,7 @@
         "flags": {
           "END_STREAM": false
         },
-        "stream_id": 0
+        "stream_id": 1
       },
       {
         "type": "RST_STREAM",
@@ -390,29 +390,25 @@
     ]
   },
   {
-    "id": 93,
-    "description": "If the Stream Identifier field specifies the value 0x00, a recipient MUST respond with a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
+    "id": 28,
+    "description": "If the Stream Identifier field of a PUSH_PROMISE frame specifies the value 0x00, a recipient MUST respond with a connection error (Section 5.4.1) of type PROTOCOL_ERROR.",
     "client_frames": [
       {
         "type": "SETTINGS",
-        "flags": [],
-        "settings": {}
+        "settings": {
+          "ENABLE_PUSH": 1
+        }
+      },
+      {
+        "type": "HEADERS",
+        "stream_id": 1
       }
     ],
     "server_frames": [
       {
         "type": "PUSH_PROMISE",
-        "flags": ["END_HEADERS"],
         "stream_id": 0,
-        "promised_stream_id": 2,
-        "headers": {
-          "pseudo_headers": {
-            "method": "GET",
-            "scheme": "http",
-            "path": "/style.css",
-            "authority": "localhost"
-          }
-        }
+        "promised_stream_id": 2
       }
     ]
   },

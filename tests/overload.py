@@ -2,7 +2,7 @@ import struct
 from typing import Iterable
 from hpack import Decoder, Encoder
 from h2.errors import ErrorCodes
-from h2.events import PriorityUpdated
+from h2.events import PriorityUpdated, StreamReset
 from h2.exceptions import FrameDataMissingError, NoSuchStreamError, ProtocolError, StreamClosedError
 from h2.frame_buffer import FrameBuffer
 from h2.settings import Settings, SettingCodes
@@ -19,6 +19,7 @@ from hyperframe.flags import Flags
 
 from h2.utilities import SizeLimitDict
 from h2.windows import WindowManager
+from h2.stream import H2StreamStateMachine
 
 def redefine_methods(cls, methods_dict):
     for method_name, new_method in methods_dict.items():
@@ -235,7 +236,10 @@ def new_receive_push_promise_frame(self, frame):
         events = []
 
         try:
-            stream = self._get_stream_by_id(frame.stream_id)
+            if frame.stream_id == 0:
+                stream = self._get_stream_by_id(1)
+            else:
+                stream = self._get_stream_by_id(frame.stream_id)
         except NoSuchStreamError:
             # We need to check if the parent stream was reset by us. If it was
             # then we presume that the PUSH_PROMISE was in flight when we reset
@@ -259,8 +263,8 @@ def new_receive_push_promise_frame(self, frame):
         # easiest way to do that is to assert that the stream_id is not even:
         # this shortcut works because only servers can push and the state
         # machine will enforce this.
-        if (frame.stream_id % 2) == 0:
-            raise ProtocolError("Cannot recursively push streams.")
+        # if (frame.stream_id % 2) == 0:
+        #     raise ProtocolError("Cannot recursively push streams.")
 
         try:
             frames, stream_events = stream.receive_push_promise_in_band(
@@ -304,6 +308,25 @@ def new_receive_priority_frame(self, frame):
     events.append(event)
 
     return [], events
+
+def new_receive_rst_stream_frame(self, frame):
+    """
+    Receive a RST_STREAM frame on the connection.
+    """
+    # events = self.state_machine.process_input(
+    #     ConnectionInputs.RECV_RST_STREAM
+    # )
+    stream_events = []
+    if frame.stream_id == 0:
+        event = StreamReset()
+        event.stream_id = 0
+        stream_events.append(event)
+        stream_frames = []
+    else:
+        stream = self._get_stream_by_id(frame.stream_id)
+        stream_frames, stream_events = stream.stream_reset(frame)
+
+    return stream_frames, stream_events
 
 def FrameBuffer__init__(self, server=False, skip_client_connection_preface=False):
     self.data = b''
@@ -410,7 +433,8 @@ redefine_methods(H2Connection, {
     '_begin_new_stream': new_begin_new_stream, 
     '_receive_push_promise_frame': new_receive_push_promise_frame, 
     '_receive_priority_frame': new_receive_priority_frame,
-    'initiate_connection': new_initiate_connection
+    'initiate_connection': new_initiate_connection,
+    '_receive_rst_stream_frame': new_receive_rst_stream_frame
 })
 redefine_methods(FrameBuffer, {'__init__': FrameBuffer__init__, 'add_data': new_add_data, '__next__': new__next__})
 redefine_methods(Frame, {'__init__': Frame__init__})

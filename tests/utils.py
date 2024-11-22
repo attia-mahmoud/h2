@@ -297,17 +297,25 @@ def send_headers_frame(conn: h2.connection.H2Connection, sock, frame_data: Dict,
         
         conn.state_machine.process_input(h2.connection.ConnectionInputs.SEND_HEADERS)
     else:
-        frame = HeadersFrame(stream_id)
-        frame.data = conn.encoder.encode(headers)
-        
-        if end_stream:
-            frame.flags.add('END_STREAM')
-        if end_headers:
-            frame.flags.add('END_HEADERS')
-        
-        # Serialize and send
-        serialized = frame.serialize()
-        sock.sendall(serialized)
+        if end_headers == False:
+            frame = HeadersFrame(stream_id)
+            frame.data = conn.encoder.encode(headers)
+            
+            if end_stream:
+                frame.flags.add('END_STREAM')
+            if end_headers:
+                frame.flags.add('END_HEADERS')
+            
+            # Serialize and send
+            serialized = frame.serialize()
+            sock.sendall(serialized)
+        else:
+            conn.send_headers(
+                stream_id=stream_id,
+                headers=headers,
+                end_stream=end_stream
+            )
+
 
 def send_data_frame(conn: h2.connection.H2Connection, frame_data: Dict) -> None:
     """Send a DATA frame"""

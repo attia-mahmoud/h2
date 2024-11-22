@@ -6,6 +6,7 @@ import signal
 import logging
 from datetime import datetime
 import argparse
+import json
 
 # Import your overload module
 import overload
@@ -34,69 +35,75 @@ def format_output(output: bytes, error: bytes):
             result.append('\n'.join(error_lines))
     return '\n'.join(result)
 
-def run_server_client():
-    parser = argparse.ArgumentParser(description='HTTP/2 Test Runner')
-    parser.add_argument('--test-id', type=int, help='Test case ID to run', required=True)
-    args = parser.parse_args()
-
+def run_single_test(test_id: int, verbose: bool = False) -> bool:
+    """Run a single test. Returns True if no error occurred"""
     server_process = None
     client_process = None
+    success = False
     
     try:
-        # Set PYTHONPATH to include the tests directory
         env = os.environ.copy()
         env['PYTHONPATH'] = os.path.dirname(os.path.abspath(__file__)) + os.pathsep + env.get('PYTHONPATH', '')
 
-        # Start the server process with test ID
-        logger.info(f"Starting HTTP/2 server with test ID {args.test_id}...")
+        if verbose:
+            logger.info(f"Starting HTTP/2 server with test ID {test_id}...")
         server_process = subprocess.Popen(
-            [sys.executable, 'tests/server.py', '--test-id', str(args.test_id)],
+            [sys.executable, 'tests/server.py', '--test-id', str(test_id)],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             env=env
         )
         
-        # Wait for server to start
         time.sleep(2)
         
-        # Start the client process with test ID
-        logger.info(f"Starting HTTP/2 client with test ID {args.test_id}...")
+        if verbose:
+            logger.info(f"Starting HTTP/2 client with test ID {test_id}...")
         client_process = subprocess.Popen(
-            [sys.executable, 'tests/client.py', '--test-id', str(args.test_id)],
+            [sys.executable, 'tests/client.py', '--test-id', str(test_id)],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             env=env
         )
         
-        # Wait for client to complete
         client_output, client_error = client_process.communicate(timeout=10)
         
-        # Format and print client output
-        client_log = format_output(client_output, client_error)
-        if client_log:
-            logger.info("\n=== Client Output ===\n%s", client_log)
+        if verbose:
+            client_log = format_output(client_output, client_error)
+            if client_log:
+                logger.info("\n=== Client Output ===\n%s", client_log)
+            logger.info("Terminating server...")
             
-        # Terminate server gracefully
-        logger.info("Terminating server...")
         server_process.terminate()
-        
-        # Get server output
         server_output, server_error = server_process.communicate(timeout=5)
         
-        # Format and print server output
-        server_log = format_output(server_output, server_error)
-        if server_log:
-            logger.info("\n=== Server Output ===\n%s", server_log)
-            
-    except subprocess.TimeoutExpired:
-        logger.error("Timeout waiting for processes to complete")
-        for process in [client_process, server_process]:
-            if process and process.poll() is None:
-                process.terminate()
+        if verbose:
+            server_log = format_output(server_output, server_error)
+            if server_log:
+                logger.info("\n=== Server Output ===\n%s", server_log)
+        
+        client_error_str = client_error.decode() if client_error else ""
+        server_error_str = server_error.decode() if server_error else ""
+        
+        # Check for actual error indicators
+        error_indicators = [
+            "Error:",
+            "Exception:",
+            "Traceback (most recent call last):",
+            "Failed:",
+            "AssertionError"
+        ]
+        
+        has_errors = any(indicator in client_error_str or indicator in server_error_str 
+                        for indicator in error_indicators)
+        
+        success = not has_errors
+        return success
+        
     except Exception as e:
-        logger.error(f"Error running test: {e}")
+        if verbose:
+            logger.error(f"Error running test: {e}")
+        return False
     finally:
-        # Ensure processes are terminated
         for process in [client_process, server_process]:
             if process and process.poll() is None:
                 try:
@@ -105,15 +112,32 @@ def run_server_client():
                 except:
                     process.kill()
 
-def main():
-    logger.info("Starting HTTP/2 test suite")
+def run_all_tests():
+    """Run all tests from the JSON file"""
     try:
-        run_server_client()
-    except KeyboardInterrupt:
-        logger.info("Test interrupted by user")
+        with open('tests/test_cases.json', 'r') as f:
+            test_cases = json.load(f)
     except Exception as e:
-        logger.error(f"Test failed: {e}")
-    logger.info("Test suite completed")
+        logger.error(f"Failed to load test cases: {e}")
+        return
+
+    for test_case in test_cases:
+        test_id = test_case.get('id')
+        if test_id is None:
+            continue
+            
+        success = run_single_test(test_id, verbose=False)
+        print(f"Test {test_id}: {'No Error' if success else 'Error'}")
+
+def main():
+    parser = argparse.ArgumentParser(description='HTTP/2 Test Runner')
+    parser.add_argument('--test-id', type=int, help='Test case ID to run', required=False)
+    args = parser.parse_args()
+
+    if args.test_id is not None:
+        run_single_test(args.test_id, verbose=True)
+    else:
+        run_all_tests()
 
 if __name__ == '__main__':
     main()

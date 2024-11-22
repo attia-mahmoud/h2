@@ -850,11 +850,11 @@ class H2Connection:
                 "Cannot send %d bytes, flow control window is %d." %
                 (frame_size, self.local_flow_control_window(stream_id))
             )
-        # elif frame_size > self.max_outbound_frame_size:
-        #     raise FrameTooLargeError(
-        #         "Cannot send frame size %d, max frame size is %d" %
-        #         (frame_size, self.max_outbound_frame_size)
-        #     )
+        elif frame_size > self.max_outbound_frame_size:
+            raise FrameTooLargeError(
+                "Cannot send frame size %d, max frame size is %d" %
+                (frame_size, self.max_outbound_frame_size)
+            )
 
         self.state_machine.process_input(ConnectionInputs.SEND_DATA)
         frames = self.streams[stream_id].send_data(

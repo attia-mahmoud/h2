@@ -152,7 +152,7 @@ def H2Connection__init__(self, config=None):
             RstStreamFrame: self._receive_rst_stream_frame,
             PriorityFrame: self._receive_priority_frame,
             GoAwayFrame: self._receive_goaway_frame,
-            ContinuationFrame: self._receive_naked_continuation,
+            ContinuationFrame: self._receive_continuation,
             AltSvcFrame: self._receive_alt_svc_frame,
             ExtensionFrame: self._receive_unknown_frame
         }

@@ -516,6 +516,23 @@
       },
       {
         "type": "CONTINUATION",
+        "stream_id": 0
+      }
+    ]
+  },
+  {
+    "id": 37,
+    "description": "A CONTINUATION frame MUST be preceded by a HEADERS, PUSH_PROMISE or CONTINUATION frame without the END_HEADERS flag set.",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "stream_id": 1,
+        "flags": {
+          "END_STREAM": false
+        }
+      },
+      {
+        "type": "CONTINUATION",
         "stream_id": 1
       }
     ]

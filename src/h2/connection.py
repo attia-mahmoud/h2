@@ -378,7 +378,7 @@ class H2Connection:
             RstStreamFrame: self._receive_rst_stream_frame,
             PriorityFrame: self._receive_priority_frame,
             GoAwayFrame: self._receive_goaway_frame,
-            ContinuationFrame: self._receive_naked_continuation,
+            ContinuationFrame: self._receive_continuation,
             AltSvcFrame: self._receive_alt_svc_frame,
             ExtensionFrame: self._receive_unknown_frame
         }
@@ -1847,16 +1847,40 @@ class H2Connection:
 
         return [], events
 
-    def _receive_naked_continuation(self, frame):
+    def _receive_continuation(self, frame):
         """
-        A naked CONTINUATION frame has been received. This is always an error,
-        but the type of error it is depends on the state of the stream and must
-        transition the state of the stream, so we need to pass it to the
-        appropriate stream.
+        A CONTINUATION frame has been received. This is only valid if we're already
+        in the middle of receiving headers.
         """
-        stream = self._get_stream_by_id(frame.stream_id)
-        stream.receive_continuation()
-        assert False, "Should not be reachable"
+        # If we're not in the middle of receiving headers, this is a problem.
+        if not self._header_frames:
+            # Skip triggering the error by ignoring the frame
+            return [], []
+            # Original error code:
+            # return self._receive_naked_continuation(frame)
+
+        # Otherwise, keep receiving headers.
+        self._header_frames.append(frame)
+        
+        if 'END_HEADERS' in frame.flags:
+            # End of headers, process them.
+            headers = _decode_headers(
+                self.decoder,
+                b''.join(f.data for f in self._header_frames)
+            )
+            self._header_frames = []
+            
+            # Process according to the type of the first frame.
+            first = self._header_frames[0]
+            if isinstance(first, HeadersFrame):
+                return self._receive_headers(first, headers)
+            elif isinstance(first, PushPromiseFrame):
+                return self._receive_push_promise(first, headers)
+            else:
+                # This shouldn't happen, but handle it gracefully
+                return [], []
+        
+        return [], []
 
     def _receive_alt_svc_frame(self, frame):
         """

@@ -665,7 +665,7 @@
           ":scheme": "http",
           ":path": "/",
           ":authority": "example.com",
-          "hello world": "space-char"
+          "user agent": "nopasaran"
         }
       }
     ]
@@ -731,6 +731,76 @@
           ":path": "/",
           ":authority": "example.com",
           "x:y": "invalid-colon"
+        }
+      }
+    ]
+  },
+  {
+      "id": 47,
+      "description": "A field value MUST NOT contain line feed (ASCII LF, 0x0a)",
+      "client_frames": [
+        {
+          "type": "HEADERS",
+          "raw_frame": true,
+          "headers": {
+            ":method": "GET",
+            ":scheme": "http",
+            ":path": "/",
+            ":authority": "example.com",
+            "x-lf-start": "\nvalue",
+            "x-lf-middle": "val\nue",
+            "x-lf-end": "value\n"
+          }
+        }
+      ]
+  },
+  {
+      "id": 48,
+      "description": "A field value MUST NOT contain carriage return (ASCII CR, 0x0d)",
+      "client_frames": [
+        {
+          "type": "HEADERS",
+          "raw_frame": true,
+          "headers": {
+            ":method": "GET",
+            ":scheme": "http",
+            ":path": "/",
+            ":authority": "example.com",
+            "x-cr-start": "\rvalue",
+            "x-cr-middle": "val\rue",
+            "x-cr-end": "value\r"
+          }
+        }
+      ]
+  },
+  {
+    "id": 49,
+    "description": "A field value MUST NOT start with an ASCII whitespace character (ASCII SP or HTAB, 0x20 or 0x09).",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "headers": {
+            ":method": "GET",
+            ":scheme": "http",
+            ":path": "/",
+            ":authority": "example.com",
+            "x-leading-space": " value"
+        }
+      }
+    ]
+  },
+  {
+    "id": 50,
+    "description": "A field value MUST NOT end with an ASCII whitespace character (ASCII SP or HTAB, 0x20 or 0x09).",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "headers": {
+            ":method": "GET",
+            ":scheme": "http",
+            ":path": "/",
+            ":authority": "example.com",
+            "x-trailing-space": "value "
         }
       }
     ]

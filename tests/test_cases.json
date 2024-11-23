@@ -717,5 +717,22 @@
         }
       }
     ]
+  },
+  {
+    "id": 46,
+    "description": "With the exception of pseudo-header fields (Section 8.3), which have a name that starts with a single colon, field names MUST NOT include a colon (ASCII COLON, 0x3a).",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "stream_id": 1,
+        "headers": {
+          ":method": "GET",
+          ":scheme": "http",
+          ":path": "/",
+          ":authority": "example.com",
+          "x:y": "invalid-colon"
+        }
+      }
+    ]
   }
 ]

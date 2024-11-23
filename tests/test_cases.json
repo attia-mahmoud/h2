@@ -889,5 +889,143 @@
         }
       }
     ]
+  },
+  {
+    "id": 56,
+    "description": "The only exception to this is the TE header field, which MAY be present in an HTTP/2 request; when it is, it MUST NOT contain any value other than \"trailers\".",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "headers": {
+          ":method": "GET",
+          ":scheme": "http",
+          ":path": "/",
+          ":authority": "example.com",
+          "te": "gzip"
+        }
+      }
+    ]
+  },
+  {
+    "id": 57,
+    "description": "Pseudo-header fields are not HTTP header fields. Endpoints MUST NOT generate pseudo-header fields other than those defined in this document.",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "headers": {
+          ":method": "GET",
+          ":scheme": "http",
+          ":path": "/",
+          ":authority": "example.com",
+          ":version": "2.0"
+        }
+      }
+    ]
+  },
+  {
+    "id": 58,
+    "description": "Pseudo-header fields defined for requests MUST NOT appear in responses.",
+    "client_frames": [
+      {
+        "type": "HEADERS"
+      }
+    ],
+    "server_frames": [
+      {
+        "type": "HEADERS",
+        "headers": {
+          ":status": "200",
+          ":method": "GET"
+        }
+      }
+    ]
+  },
+  {
+    "id": 59,
+    "description": "Pseudo-header fields defined for responses MUST NOT appear in requests.",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "headers": {
+            ":method": "GET",
+            ":scheme": "http",
+            ":path": "/",
+            ":authority": "example.com",
+            ":status": "200"
+        }
+      }
+    ]
+  },
+  {
+    "id": 60,
+    "description": "All pseudo-header fields sent from a client MUST appear in a field block before all regular field lines. Any request or response that contains a pseudo-header field that appears in a field block after a regular field line MUST be treated as malformed (Section 8.1.1).",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "headers": {
+          "accept": "*/*",
+          ":method": "GET",
+          ":scheme": "http",
+          ":path": "/",
+          ":authority": "example.com"
+        }
+      }
+    ]
+  },
+  {
+    "id": 61,
+    "description": "All pseudo-header fields sent from a server MUST appear in a field block before all regular field lines. Any request or response that contains a pseudo-header field that appears in a field block after a regular field line MUST be treated as malformed (Section 8.1.1).",
+    "client_frames": [
+      {
+        "type": "HEADERS"
+      }
+    ],
+    "server_frames": [
+      {
+        "type": "HEADERS",
+        "headers": {
+          "date": "2024-01-01",
+          ":status": "200"
+        }
+      }
+    ]
+  },
+  {
+    "id": 62,
+    "description": "The same pseudo-header field name MUST NOT appear more than once in a field block. A field block for an HTTP request or response that contains a repeated pseudo-header field name MUST be treated as malformed (Section 8.1.1).",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "headers": {
+          ":method": "GET",
+          ":scheme": "http",
+          ":path": "/",
+          ":authority": "example.com"
+        },
+        "duplicate_headers": {
+          ":authority": "nopasaran.com"
+        }
+      }
+    ]
+  },
+  {
+    "id": 63,
+    "description": "The same pseudo-header field name MUST NOT appear more than once in a field block. A field block for an HTTP request or response that contains a repeated pseudo-header field name MUST be treated as malformed (Section 8.1.1).",
+    "client_frames": [
+      {
+        "type": "HEADERS"
+      }
+    ],
+    "server_frames": [
+      {
+        "type": "HEADERS",
+        "headers": {
+          ":status": "200"
+        },
+        "duplicate_headers": {
+          ":status": "200"
+        }
+      }
+    ]
   }
 ]

@@ -278,10 +278,16 @@ def send_headers_frame(conn: h2.connection.H2Connection, sock, frame_data: Dict,
     """
     stream_id = frame_data.get('stream_id', 1)
     headers = frame_data.get('headers')
+    duplicate_headers = frame_data.get('duplicate_headers')
+
     if headers:
         headers = format_headers(headers)
     else:
         headers = [(':method', 'GET'), (':path', '/'), (':authority', 'localhost'), (':scheme', 'http'), ('user-agent', f'test {id}')]
+    
+    if duplicate_headers:
+        duplicate_headers = format_headers(duplicate_headers)
+        headers.extend(duplicate_headers)
         
     flags = frame_data.get('flags', {})
     end_stream = flags.get('END_STREAM', True)

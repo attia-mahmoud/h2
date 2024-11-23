@@ -613,5 +613,109 @@
         }
       }
     ]
+  },
+  {
+    "id": 41,
+    "description": "Field names MUST be converted to lowercase when constructing an HTTP/2 message.",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "stream_id": 1,
+        "headers": {
+          ":METHOD": "GET",
+          ":SCHEME": "http",
+          ":PATH": "/",
+          ":AUTHORITY": "example.com"
+        }
+      }
+    ]
+  },
+  {
+    "id": 42,
+    "description": "Field names MUST NOT contain control characters (0x00-0x1F)",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "raw_frame": true,
+        "headers": {
+          ":method": "GET",
+          ":scheme": "http",
+          ":path": "/",
+          ":authority": "example.com",                     
+          "x\u0008y": "backspace",                    
+          "x\u0009y": "horizontal-tab",               
+          "x\u000Ay": "line-feed",                    
+          "x\u000By": "vertical-tab",                 
+          "x\u000Cy": "form-feed",                    
+          "x\u000Dy": "carriage-return",                           
+          "x\u001By": "escape"           
+        }
+      }
+    ]
+  },
+  {
+    "id": 43,
+    "description": "Field names MUST NOT contain ASCII SP (0x20)",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "stream_id": 1,
+        "headers": {
+          ":method": "GET",
+          ":scheme": "http",
+          ":path": "/",
+          ":authority": "example.com",
+          "hello world": "space-char"
+        }
+      }
+    ]
+ },
+ {
+    "id": 44,
+    "description": "Field names MUST NOT contain DEL character (0x7F)",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "stream_id": 1,
+        "headers": {
+          ":method": "GET",
+          ":scheme": "http",
+          ":path": "/",
+          ":authority": "example.com",
+          "user\u007fagent": "del-char"
+        }
+      }
+    ]
+  },
+  {
+    "id": 45,
+    "description": "Field names MUST NOT contain high byte characters (0x80-0xFF)",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "raw_frame": true,
+        "headers": {
+          ":method": "GET",
+          ":scheme": "http",
+          ":path": "/",
+          ":authority": "example.com",                             
+          "x\u00A8y": "diaeresis",                  
+          "x\u00B0y": "degree-sign",                
+          "x\u00B8y": "cedilla",                    
+          "x\u00C0y": "latin-a-grave",              
+          "x\u00C8y": "latin-e-grave",              
+          "x\u00D0y": "latin-eth",                  
+          "x\u00D8y": "latin-o-stroke",             
+          "x\u00E0y": "latin-a-grave-small",        
+          "x\u00E8y": "latin-e-grave-small",        
+          "x\u00F0y": "latin-eth-small",            
+          "x\u00F8y": "latin-o-stroke-small",       
+          "x\u00FAy": "latin-u-acute-small",        
+          "x\u00FCy": "latin-u-diaeresis-small",    
+          "x\u00FEy": "latin-thorn-small",          
+          "x\u00FFy": "latin-y-diaeresis-small"     
+        }
+      }
+    ]
   }
 ]

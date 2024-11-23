@@ -127,6 +127,12 @@ def log_h2_frame(logger: logging.Logger, direction: str, event: Any):
         for k, v in headers.items():
             logger.info(f"  {k}: {v}")
             
+    elif isinstance(event, h2.events.TrailersReceived):
+        headers = dict(event.headers)
+        logger.info("Trailers:")
+        for k, v in headers.items():
+            logger.info(f"  {k}: {v}")
+            
     elif isinstance(event, h2.events.PushedStreamReceived):
         # Add PUSH_PROMISE specific logging
         logger.info(f"Parent Stream ID: {event.parent_stream_id}")
@@ -159,6 +165,13 @@ def log_h2_frame(logger: logging.Logger, direction: str, event: Any):
         logger.info(f"Depends On: {event.depends_on}")
         logger.info(f"Weight: {event.weight}")
         logger.info(f"Exclusive: {event.exclusive}")
+        
+    elif isinstance(event, h2.events.StreamReset):
+        logger.info(f"Error Code: {event.error_code}")
+        logger.info(f"Remote Reset: {event.remote_reset}")
+        
+    elif isinstance(event, h2.events.StreamEnded):
+        logger.info("Stream Ended")
         
     logger.info(separator)
 
@@ -241,6 +254,8 @@ def send_frame(conn: h2.connection.H2Connection, sock: socket.socket,
         send_window_update_frame(conn, sock, frame_data)
     elif frame_type == 'CONTINUATION':
         send_continuation_frame(conn, sock, frame_data)
+    elif frame_type == 'TRAILERS':
+        send_trailers_frame(conn, sock, frame_data)
     
     # Send any pending data
     outbound_data = conn.data_to_send()
@@ -325,6 +340,29 @@ def send_headers_frame(conn: h2.connection.H2Connection, sock, frame_data: Dict,
                 end_stream=end_stream
             )
 
+def send_trailers_frame(conn: h2.connection.H2Connection, sock: socket.socket, frame_data: Dict):
+    """Send a TRAILERS frame"""
+    stream_id = frame_data.get('stream_id', 1)
+    headers = frame_data.get('headers')
+    end_stream = frame_data.get('flags', {}).get('END_STREAM', True)
+    if headers:
+        headers = format_headers(headers)
+    else:
+        headers = [('content-type', 'text/plain')]
+    
+    # trailer_frame = HeadersFrame(stream_id)
+    # trailer_frame.data = conn.encoder.encode(headers)
+    # trailer_frame.flags.add('END_HEADERS')
+    # trailer_frame.flags.add('END_STREAM')
+
+    conn.send_headers(
+        stream_id=stream_id,
+        headers=headers,
+        end_stream=end_stream
+    )
+    
+    # serialized = trailer_frame.serialize()
+    # sock.sendall(serialized)
 
 def send_data_frame(conn: h2.connection.H2Connection, frame_data: Dict) -> None:
     """Send a DATA frame"""

@@ -586,5 +586,32 @@
         "stream_id": 1
       }
     ]
+  },
+  {
+    "id": 40,
+    "description": "Trailers MUST NOT include pseudo-header fields (Section 8.3).",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "stream_id": 1,
+        "flags": {
+          "END_STREAM": false
+        }
+      },
+      {
+        "type": "DATA",
+        "stream_id": 1,
+        "flags": {
+          "END_STREAM": false
+        }
+      },
+      {
+        "type": "TRAILERS",
+        "stream_id": 1,
+        "headers": {
+          ":path": "/"
+        }
+      }
+    ]
   }
 ]

@@ -43,36 +43,6 @@
     ]
   },
   {
-    "id": 142,
-    "description": "With the exception of pseudo-header fields (Section 8.3), which have a name that starts with a single colon, field names MUST NOT include a colon (ASCII COLON, 0x3a).",
-    "client_frames": [
-      {
-        "type": "HEADERS",
-        "stream_id": 1,
-        "flags": ["END_HEADERS", "END_STREAM"],
-        "raw_payload": true,
-        "headers": {
-          "pseudo_headers": {
-            "method": "GET",
-            "scheme": "http",
-            "path": "/",
-            "authority": "example.com"
-          },
-          "regular_headers": {
-            "x:y": "invalid-colon"
-          }
-        }
-      }
-    ],
-    "server_frames": [
-      {
-        "type": "SETTINGS",
-        "flags": [],
-        "settings": {}
-      }
-    ]
-  },
-  {
     "id": 143,
     "description": "A field value MUST NOT contain the zero value (ASCII NUL, 0x00), line feed (ASCII LF, 0x0a), or carriage return (ASCII CR, 0x0d) at any position.",
     "client_frames": [

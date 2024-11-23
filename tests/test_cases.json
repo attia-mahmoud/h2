@@ -804,5 +804,90 @@
         }
       }
     ]
+  },
+  {
+    "id": 51,
+    "description": "An endpoint MUST NOT generate an HTTP/2 message containing connection header field (RFC9113 Section 8.2.2)",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "stream_id": 1,
+        "headers": {
+          ":method": "GET",
+          ":scheme": "http",
+          ":path": "/",
+          ":authority": "example.com",
+          "connection": "keep-alive"
+        }
+      }
+    ]
+  },
+  {
+    "id": 52,
+    "description": "An endpoint MUST NOT generate an HTTP/2 message containing proxy-connection header field (RFC9113 Section 8.2.2)",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "stream_id": 1,
+        "headers": {
+          ":method": "GET",
+          ":scheme": "http",
+          ":path": "/",
+          ":authority": "example.com",
+          "proxy-connection": "keep-alive"
+        }
+      }
+    ]
+  },
+  {
+    "id": 53,
+    "description": "An endpoint MUST NOT generate an HTTP/2 message containing keep-alive header field (RFC9113 Section 8.2.2)",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "stream_id": 1,
+        "headers": {
+          ":method": "GET",
+          ":scheme": "http",
+          ":path": "/",
+          ":authority": "example.com",
+          "keep-alive": "timeout=5"
+        }
+      }
+    ]
+  },
+  {
+    "id": 54,
+    "description": "An endpoint MUST NOT generate an HTTP/2 message containing transfer-encoding header field (RFC9113 Section 8.2.2)",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "stream_id": 1,
+        "headers": {
+          ":method": "GET",
+          ":scheme": "http",
+          ":path": "/",
+          ":authority": "example.com",
+          "transfer-encoding": "chunked"
+        }
+      }
+    ]
+  },
+  {
+    "id": 55,
+    "description": "An endpoint MUST NOT generate an HTTP/2 message containing upgrade header field (RFC9113 Section 8.2.2)",
+    "client_frames": [
+      {
+        "type": "HEADERS",
+        "stream_id": 1,
+        "headers": {
+          ":method": "GET",
+          ":scheme": "http",
+          ":path": "/",
+          ":authority": "example.com",
+          "upgrade": "h2c"
+        }
+      }
+    ]
   }
 ]

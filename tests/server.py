@@ -20,6 +20,8 @@ from states import ServerState
 
 logger = setup_logging(__name__)
 
+FRAME_TIMEOUT_SECONDS = 5  # Timeout when waiting for frames
+
 class HTTP2Server:
     def __init__(self, host: str = 'localhost', port: int = 8443, test_case: dict = None):
         self.host = host
@@ -33,7 +35,7 @@ class HTTP2Server:
             ServerState.WAITING_PREFACE: self._handle_waiting_preface,
             ServerState.PREFACE_RECEIVED: self._handle_preface_received,
             ServerState.SETTINGS_ACKED: self._handle_settings_acked,
-            ServerState.PROCESSING_FRAMES: self._handle_processing_frames
+            ServerState.RECEIVING_FRAMES: self._handle_receiving_frames,
         }
 
     def _transition_to(self, new_state: ServerState):
@@ -61,8 +63,12 @@ class HTTP2Server:
             
         elif isinstance(event, (h2.events.StreamEnded, h2.events.StreamReset)):
             if not self.conn.state_machine.state == h2.connection.ConnectionState.CLOSED:
-                for frame in self.test_case.get('server_frames', []):
-                    send_frame(self.conn, client_socket, frame, self.test_case['id'])
+                if self.test_case.get('server_frames', None):
+                    self._transition_to(ServerState.SENDING_FRAMES)
+                    for frame in self.test_case['server_frames']:
+                        send_frame(self.conn, client_socket, frame, self.test_case['id'])
+                    self._transition_to(ServerState.RECEIVING_FRAMES)
+
 
     def _handle_idle(self, client_socket: ssl.SSLSocket):
         """Initialize connection settings"""
@@ -115,9 +121,9 @@ class HTTP2Server:
 
     def _handle_settings_acked(self, client_socket: ssl.SSLSocket):
         """Handle the state after settings are acknowledged"""
-        self._transition_to(ServerState.PROCESSING_FRAMES)
+        self._transition_to(ServerState.RECEIVING_FRAMES)
 
-    def _handle_processing_frames(self, client_socket: ssl.SSLSocket):
+    def _handle_receiving_frames(self, client_socket: ssl.SSLSocket):
         """Process incoming frames in normal operation"""
         data = self._receive_data(client_socket)
         if data:
@@ -129,15 +135,22 @@ class HTTP2Server:
             if outbound_data:
                 client_socket.sendall(outbound_data)
 
-    def _receive_data(self, client_socket: ssl.SSLSocket, timeout: float = 0.5) -> bytes:
+    def _receive_data(self, client_socket: ssl.SSLSocket, timeout: float = FRAME_TIMEOUT_SECONDS) -> bytes:
         """Helper method to receive data with timeout"""
         client_socket.settimeout(timeout)
         try:
-            return client_socket.recv(SSL_CONFIG.MAX_BUFFER_SIZE)
-        except socket.timeout:  # Use socket.timeout instead of client_socket.timeout
+            data = client_socket.recv(SSL_CONFIG.MAX_BUFFER_SIZE)
+            if not data:
+                logger.warning(f"No data received after {timeout}s in state {self.state}")
+                self._transition_to(ServerState.CLOSING)
+            return data
+        except socket.timeout:
+            logger.warning(f"Timeout waiting for frame in state {self.state}")
+            self._transition_to(ServerState.CLOSING)
             return None
         except (ConnectionResetError, BrokenPipeError):
             logger.warning("Connection closed by peer")
+            self._transition_to(ServerState.CLOSING)
             return None
 
     def handle_connection(self, client_socket: ssl.SSLSocket):

@@ -14,3 +14,4 @@ _trial_temp/
 .venv
 
 logs
+.DS_Store

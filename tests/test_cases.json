@@ -13,7 +13,6 @@
   {
     "id": 2,
     "description": "Client must send connection preface after TLS establishment",
-    "tls_enabled": true,
     "connection_settings_client": {
       "skip_client_connection_preface": true
     },
@@ -64,7 +63,7 @@
   },
   {
     "id": 6,
-    "description": "The SETTINGS frames received from server as part of the connection preface MUST be acknowledged (see Section 6.5.3) after sending the connection preface.",
+    "description": "The SETTINGS frames received from server as part of the connection preface MUST be acknowledged by the client (see Section 6.5.3) after sending the connection preface.",
     "connection_settings_client": {
       "skip_initial_settings_ack": true
     },
@@ -996,7 +995,7 @@
     "client_frames": [
       {
         "type": "HEADERS",
-        "headers": {
+        "headers": {  
           ":method": "GET",
           ":scheme": "http",
           ":path": "/",
@@ -1025,6 +1024,15 @@
         "duplicate_headers": {
           ":status": "200"
         }
+      }
+    ]
+  },
+  {
+    "id": 64,
+    "description": "Control",
+    "client_frames": [
+      {
+        "type": "HEADERS"
       }
     ]
   }

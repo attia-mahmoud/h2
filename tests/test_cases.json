@@ -158,11 +158,11 @@
         "flags": {
           "END_STREAM": false
         },
-        "stream_id": 5
+        "stream_id": 3
       },
       {
         "type": "HEADERS",
-        "stream_id": 3
+        "stream_id": 1
       }
     ]
   },
@@ -891,7 +891,7 @@
   },
   {
     "id": 56,
-    "description": "The only exception to this is the TE header field, which MAY be present in an HTTP/2 request; when it is, it MUST NOT contain any value other than \"trailers\".",
+    "description": "The TE header field MAY be present in an HTTP/2 request; when it is, it MUST NOT contain any value other than 'trailers'.",
     "client_frames": [
       {
         "type": "HEADERS",

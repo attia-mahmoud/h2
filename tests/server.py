@@ -17,10 +17,11 @@ from utils import (
 )
 import argparse
 from states import ServerState
+import time
 
 logger = setup_logging(__name__)
 
-FRAME_TIMEOUT_SECONDS = 5  # Timeout when waiting for frames
+FRAME_TIMEOUT_SECONDS = 1  # Timeout when waiting for frames
 
 class HTTP2Server:
     def __init__(self, host: str = 'localhost', port: int = 8443, test_case: dict = None):
@@ -103,18 +104,17 @@ class HTTP2Server:
     def _handle_receiving_frames(self, client_socket: ssl.SSLSocket):
         """Handle response waiting state."""
         expected_client_frames = len(self.test_case.get('client_frames', []))
-        received_client_frames = 0
         
         # If we don't expect any frames from client, skip waiting
         if expected_client_frames == 0:
-            logger.info("No client frames expected, closing connection")
+            logger.info("No client frames expected, sending frames")
             self._transition_to(ServerState.SENDING_FRAMES)
             return
         
-        while received_client_frames < expected_client_frames:
+        for i in range(expected_client_frames):
             data = self._receive_frame(client_socket)
             if data is None:  # Timeout occurred
-                logger.info("Timeout waiting for client frames, closing connection")
+                logger.info("Timeout waiting for client frames, sending frames")
                 self._transition_to(ServerState.SENDING_FRAMES)
                 return
             
@@ -127,9 +127,7 @@ class HTTP2Server:
                 if outbound_data:
                     client_socket.sendall(outbound_data)
                     
-            received_client_frames += 1
-
-    def _handle_sending_frames(self):
+    def _handle_sending_frames(self, client_socket: ssl.SSLSocket):
         """Send frames based on test case"""
         if self.state != ServerState.SENDING_FRAMES:
             raise RuntimeError(f"Cannot send frames in state {self.state}")
@@ -139,7 +137,10 @@ class HTTP2Server:
             
             for i, frame in enumerate(frames):
                 logger.info(f"Sending frame {i+1}/{len(frames)}: {frame.get('type')}")
-                send_frame(self.conn, self.sock, frame, self.test_case['id'])
+                send_frame(self.conn, client_socket, frame, self.test_case['id'])
+            
+            # Add a small delay to ensure frames are transmitted
+            time.sleep(0.1)
             
             # Wait for any client frames
             self._transition_to(ServerState.RECEIVING_FRAMES)
@@ -160,15 +161,15 @@ class HTTP2Server:
             data = client_socket.recv(SSL_CONFIG.MAX_BUFFER_SIZE)
             if not data:
                 logger.warning(f"No data received after {timeout}s in state {self.state}")
-                self._transition_to(ServerState.CLOSING)
+                # self._transition_to(ServerState.CLOSING)
             return data
         except socket.timeout:
             logger.warning(f"Timeout waiting for frame in state {self.state}")
-            self._transition_to(ServerState.CLOSING)
+            # self._transition_to(ServerState.CLOSING)
             return None
         except (ConnectionResetError, BrokenPipeError):
             logger.warning("Connection closed by peer")
-            self._transition_to(ServerState.CLOSING)
+            # self._transition_to(ServerState.CLOSING)
             return None
 
     def handle_connection(self, client_socket: ssl.SSLSocket):

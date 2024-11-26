@@ -13,7 +13,7 @@ import overload
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
@@ -65,7 +65,7 @@ def run_single_test(test_id: int, verbose: bool = False) -> bool:
             env=env
         )
         
-        client_output, client_error = client_process.communicate(timeout=10)
+        client_output, client_error = client_process.communicate(timeout=30)
         
         if verbose:
             client_log = format_output(client_output, client_error)
@@ -74,7 +74,7 @@ def run_single_test(test_id: int, verbose: bool = False) -> bool:
             logger.info("Terminating server...")
             
         server_process.terminate()
-        server_output, server_error = server_process.communicate(timeout=5)
+        server_output, server_error = server_process.communicate(timeout=30)
         
         if verbose:
             server_log = format_output(server_output, server_error)
@@ -108,7 +108,7 @@ def run_single_test(test_id: int, verbose: bool = False) -> bool:
             if process and process.poll() is None:
                 try:
                     process.terminate()
-                    process.wait(timeout=5)
+                    process.wait(timeout=30)
                 except:
                     process.kill()
 

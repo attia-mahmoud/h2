@@ -21,7 +21,8 @@ from states import ClientState
 logger = setup_logging('client')
 
 # Add at the top with other constants
-FRAME_TIMEOUT_SECONDS = 1  # Timeout when waiting for frames
+FRAME_TIMEOUT_SECONDS = 2  # Increased from 1 to 2 seconds
+MAX_RETRY_ATTEMPTS = 3
 
 class HTTP2Client:
     def __init__(self, host: str = 'localhost', port: int = 8443, test_case: dict = None):
@@ -50,6 +51,9 @@ class HTTP2Client:
         """Central event handler that updates state based on received events"""
         if isinstance(event, h2.events.RemoteSettingsChanged):
             if self.state == ClientState.WAITING_PREFACE:
+                outbound_data = self.conn.data_to_send()  # This will generate SETTINGS ACK
+                if outbound_data:
+                    self.sock.sendall(outbound_data)
                 self._transition_to(ClientState.WAITING_ACK)
             
         elif isinstance(event, h2.events.SettingsAcknowledged):
@@ -84,7 +88,7 @@ class HTTP2Client:
 
     def _handle_waiting_preface(self):
         """Wait for server's SETTINGS frame"""
-        data = self._receive_frame(timeout=1.0)
+        data = self._receive_frame()
         if data:
             events = self.conn.receive_data(data)
             for event in events:
@@ -93,7 +97,7 @@ class HTTP2Client:
 
     def _handle_waiting_ack(self):
         """Wait for server's SETTINGS_ACK frame"""
-        data = self._receive_frame(timeout=1.0)
+        data = self._receive_frame()
         if data:
             events = self.conn.receive_data(data)
             for event in events:
@@ -108,27 +112,14 @@ class HTTP2Client:
             return data
         except socket.timeout:
             logger.warning(f"Timeout waiting for frame in state {self.state}")
-            self._transition_to(ClientState.CLOSING)
             return None
-
-    def connect(self):
-        """Main connection loop"""
-        try:
-            while self.state != ClientState.CLOSED:
-                handler = self._state_handlers.get(self.state)
-                if handler:
-                    handler()
-                else:
-                    raise RuntimeError(f"No handler for state {self.state}")
-                
-        except Exception as e:
-            handle_socket_error(logger, e, "connect")
-            self._transition_to(ClientState.CLOSING)  # Instead of calling close()
 
     def _handle_receiving_frames(self):
         """Handle response waiting state. Returns number of frames received."""
         expected_server_frames = len(self.test_case.get('server_frames', []))
         received_server_frames = 0
+        retry_count = 0
+        logger.info(f"expected_server_frames: {expected_server_frames}")
         
         # If we don't expect any frames from server, skip waiting
         if expected_server_frames == 0:
@@ -137,13 +128,19 @@ class HTTP2Client:
             return 0
         
         while received_server_frames < expected_server_frames:
-            data = self._receive_data()
+            data = self._receive_frame()
             if data is None:  # Timeout occurred
-                logger.info("Timeout waiting for server frames, closing connection")
-                self._transition_to(ClientState.CLOSING)
-                return received_server_frames
+                retry_count += 1
+                if retry_count >= MAX_RETRY_ATTEMPTS:
+                    logger.info(f"Max retries ({MAX_RETRY_ATTEMPTS}) reached waiting for server frames, closing connection")
+                    self._transition_to(ClientState.CLOSING)
+                    return received_server_frames
+                logger.info(f"Retry {retry_count}/{MAX_RETRY_ATTEMPTS} waiting for server frames")
+                continue
             
             else:
+                retry_count = 0  # Reset retry counter on successful receive
+                logger.info(f"received_server_frames: {received_server_frames + 1}")
                 events = self.conn.receive_data(data)
                 for event in events:
                     log_h2_frame(logger, "RECEIVED", event)
@@ -153,7 +150,11 @@ class HTTP2Client:
                 if outbound_data:
                     self.sock.sendall(outbound_data)
                     
-            received_server_frames += 1
+                received_server_frames += 1
+        
+        # Only transition to CLOSING after receiving all expected frames
+        logger.info("All expected frames received, closing connection")
+        self._transition_to(ClientState.CLOSING)
 
     def _handle_sending_frames(self):
         """Send frames based on test case"""
@@ -166,8 +167,7 @@ class HTTP2Client:
             for i, frame in enumerate(frames):
                 logger.info(f"Sending frame {i+1}/{len(frames)}: {frame.get('type')}")
                 send_frame(self.conn, self.sock, frame, self.test_case['id'])
-            
-            # Wait for any server frames
+
             self._transition_to(ClientState.RECEIVING_FRAMES)
 
         except Exception as e:
@@ -204,6 +204,20 @@ class HTTP2Client:
                 self.sock.close()
                 self.sock = None
                 self.conn = None
+
+    def connect(self):
+        """Main connection loop"""
+        try:
+            while self.state != ClientState.CLOSED:
+                handler = self._state_handlers.get(self.state)
+                if handler:
+                    handler()
+                else:
+                    raise RuntimeError(f"No handler for state {self.state}")
+                
+        except Exception as e:
+            handle_socket_error(logger, e, "connect")
+            self._transition_to(ClientState.CLOSING)  # Instead of calling close()
 
 def main():
     parser = argparse.ArgumentParser(description='HTTP/2 Client')

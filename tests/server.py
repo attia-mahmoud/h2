@@ -63,7 +63,6 @@ class HTTP2Server:
             logger.info(f"Received GOAWAY frame. Error code: {event.error_code}")
             self._transition_to(ServerState.CLOSING)
 
-
     def _handle_idle(self, client_socket: ssl.SSLSocket):
         """Initialize connection settings"""
         tls_enabled = self.test_case.get('tls_enabled', False)

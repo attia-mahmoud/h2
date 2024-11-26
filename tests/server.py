@@ -33,9 +33,10 @@ class HTTP2Server:
         self._state_handlers = {
             ServerState.IDLE: self._handle_idle,
             ServerState.WAITING_PREFACE: self._handle_waiting_preface,
-            ServerState.PREFACE_RECEIVED: self._handle_preface_received,
-            ServerState.SETTINGS_ACKED: self._handle_settings_acked,
+            ServerState.WAITING_ACK: self._handle_waiting_ack,
             ServerState.RECEIVING_FRAMES: self._handle_receiving_frames,
+            ServerState.SENDING_FRAMES: self._handle_sending_frames,
+            ServerState.CLOSING: self._handle_closing
         }
 
     def _transition_to(self, new_state: ServerState):
@@ -43,31 +44,23 @@ class HTTP2Server:
         logger.debug(f"State transition: {self.state} -> {new_state}")
         self.state = new_state
 
-    def _handle_event(self, event: h2.events.Event, client_socket: ssl.SSLSocket) -> None:
-        """Central event handler that updates state based on received events"""
+    def _handle_frame(self, event: h2.events.Event, client_socket: ssl.SSLSocket) -> None:
         log_h2_frame(logger, "RECEIVED", event)
-
+        """Central event handler that updates state based on received events"""
         if isinstance(event, h2.events.RemoteSettingsChanged):
-            # When we receive client's SETTINGS, we need to acknowledge it
-            outbound_data = self.conn.data_to_send()  # This will generate SETTINGS ACK
-            if outbound_data:
-                client_socket.sendall(outbound_data)
+            if self.state == ServerState.WAITING_PREFACE:
+                outbound_data = self.conn.data_to_send()  # This will generate SETTINGS ACK
+                if outbound_data:
+                    client_socket.sendall(outbound_data)
+                self._transition_to(ServerState.WAITING_ACK)
         
         elif isinstance(event, h2.events.SettingsAcknowledged):
-            if self.state == ServerState.PREFACE_RECEIVED:
-                self._transition_to(ServerState.SETTINGS_ACKED)
+            if self.state == ServerState.WAITING_ACK:
+                self._transition_to(ServerState.RECEIVING_FRAMES)
         
         elif isinstance(event, h2.events.ConnectionTerminated):
             logger.info(f"Received GOAWAY frame. Error code: {event.error_code}")
             self._transition_to(ServerState.CLOSING)
-            
-        elif isinstance(event, (h2.events.StreamEnded, h2.events.StreamReset)):
-            if not self.conn.state_machine.state == h2.connection.ConnectionState.CLOSED:
-                if self.test_case.get('server_frames', None):
-                    self._transition_to(ServerState.SENDING_FRAMES)
-                    for frame in self.test_case['server_frames']:
-                        send_frame(self.conn, client_socket, frame, self.test_case['id'])
-                    self._transition_to(ServerState.RECEIVING_FRAMES)
 
 
     def _handle_idle(self, client_socket: ssl.SSLSocket):
@@ -86,56 +79,81 @@ class HTTP2Server:
         config = h2.config.H2Configuration(client_side=False, **config_settings)
         self.conn = h2.connection.H2Connection(config=config)
         
-        # Send initial SETTINGS frame
+        # Send connection preface
         self.conn.initiate_connection()
         client_socket.sendall(self.conn.data_to_send())
         self._transition_to(ServerState.WAITING_PREFACE)
 
     def _handle_waiting_preface(self, client_socket: ssl.SSLSocket):
         """Wait for client's connection preface"""
-        data = self._receive_data(client_socket)
-        if not data:
-            return
-
-        if data.startswith(b'PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n'):
-            logger.info("Received HTTP/2 preface")
-            self._transition_to(ServerState.PREFACE_RECEIVED)
-            
-            # Process the rest of the data (which should include client's SETTINGS)
-            events = self.conn.receive_data(data)
-            for event in events:
-                self._handle_event(event, client_socket)
-            
-            # Send any pending data (like SETTINGS ACK)
-            outbound_data = self.conn.data_to_send()
-            if outbound_data:
-                client_socket.sendall(outbound_data)
-
-    def _handle_preface_received(self, client_socket: ssl.SSLSocket):
-        """Process frames after receiving preface"""
-        data = self._receive_data(client_socket)
+        data = self._receive_frame(client_socket)
         if data:
             events = self.conn.receive_data(data)
             for event in events:
-                self._handle_event(event, client_socket)
+                self._handle_frame(event, client_socket)
 
-    def _handle_settings_acked(self, client_socket: ssl.SSLSocket):
-        """Handle the state after settings are acknowledged"""
-        self._transition_to(ServerState.RECEIVING_FRAMES)
+    def _handle_waiting_ack(self, client_socket: ssl.SSLSocket):
+        """Wait for server's SETTINGS_ACK frame"""
+        data = self._receive_frame(client_socket)
+        if data:
+            events = self.conn.receive_data(data)
+            for event in events:
+                self._handle_frame(event, client_socket)
 
     def _handle_receiving_frames(self, client_socket: ssl.SSLSocket):
-        """Process incoming frames in normal operation"""
-        data = self._receive_data(client_socket)
-        if data:
-            events = self.conn.receive_data(data)
-            for event in events:
-                self._handle_event(event, client_socket)
+        """Handle response waiting state."""
+        expected_client_frames = len(self.test_case.get('client_frames', []))
+        received_client_frames = 0
+        
+        # If we don't expect any frames from client, skip waiting
+        if expected_client_frames == 0:
+            logger.info("No client frames expected, closing connection")
+            self._transition_to(ServerState.SENDING_FRAMES)
+            return
+        
+        while received_client_frames < expected_client_frames:
+            data = self._receive_frame(client_socket)
+            if data is None:  # Timeout occurred
+                logger.info("Timeout waiting for client frames, closing connection")
+                self._transition_to(ServerState.SENDING_FRAMES)
+                return
             
-            outbound_data = self.conn.data_to_send()
-            if outbound_data:
-                client_socket.sendall(outbound_data)
+            else:
+                events = self.conn.receive_data(data)
+                for event in events:
+                    self._handle_frame(event, client_socket)
+                
+                outbound_data = self.conn.data_to_send()
+                if outbound_data:
+                    client_socket.sendall(outbound_data)
+                    
+            received_client_frames += 1
 
-    def _receive_data(self, client_socket: ssl.SSLSocket, timeout: float = FRAME_TIMEOUT_SECONDS) -> bytes:
+    def _handle_sending_frames(self):
+        """Send frames based on test case"""
+        if self.state != ServerState.SENDING_FRAMES:
+            raise RuntimeError(f"Cannot send frames in state {self.state}")
+        
+        try:
+            frames = self.test_case.get('server_frames', [])
+            
+            for i, frame in enumerate(frames):
+                logger.info(f"Sending frame {i+1}/{len(frames)}: {frame.get('type')}")
+                send_frame(self.conn, self.sock, frame, self.test_case['id'])
+            
+            # Wait for any client frames
+            self._transition_to(ServerState.RECEIVING_FRAMES)
+
+        except Exception as e:
+            logger.error(f"Error sending frames: {e}")
+            raise
+
+    def _handle_closing(self, client_socket: ssl.SSLSocket):
+        """Close the connection"""
+        client_socket.close()
+        self._transition_to(ServerState.CLOSED)
+
+    def _receive_frame(self, client_socket: ssl.SSLSocket, timeout: float = FRAME_TIMEOUT_SECONDS) -> bytes:
         """Helper method to receive data with timeout"""
         client_socket.settimeout(timeout)
         try:
@@ -154,24 +172,18 @@ class HTTP2Server:
             return None
 
     def handle_connection(self, client_socket: ssl.SSLSocket):
-        """Main connection handling loop"""
+        """Main connection loop"""
         try:
-            self._handle_idle(client_socket)
-            
-            while not self.conn.state_machine.state == h2.connection.ConnectionState.CLOSED:
+            while self.state != ServerState.CLOSED:
                 handler = self._state_handlers.get(self.state)
                 if handler:
                     handler(client_socket)
                 else:
                     raise RuntimeError(f"No handler for state {self.state}")
                 
-                if self.state == ServerState.CLOSING:
-                    break
-                    
         except Exception as e:
-            handle_socket_error(logger, e, "connection handler")
-        finally:
-            self._transition_to(ServerState.CLOSED)
+            handle_socket_error(logger, e, "connect")
+            self._transition_to(ServerState.CLOSING)  # Instead of calling close()
 
     def start(self):
         """Start the HTTP/2 server"""
@@ -191,12 +203,8 @@ class HTTP2Server:
                     break
                 except Exception as e:
                     handle_socket_error(logger, e, "connection handling")
-                finally:
-                    if client_socket:
-                        client_socket.close()
-        finally:
-            if self.sock:
-                self.sock.close()
+        except Exception as e:
+            handle_socket_error(logger, e, "start")
 
 def main():
     parser = argparse.ArgumentParser(description='HTTP/2 Server')

@@ -14,6 +14,7 @@ class ServerState(Enum):
     WAITING_PREFACE = auto()
     PREFACE_RECEIVED = auto()
     SETTINGS_ACKED = auto()
+    WAITING_ACK = auto()
     RECEIVING_FRAMES = auto()
     SENDING_FRAMES = auto()
     CLOSING = auto()

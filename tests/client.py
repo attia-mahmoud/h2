@@ -52,7 +52,7 @@ class HTTP2Client:
             if self.state == ClientState.WAITING_PREFACE:
                 self._transition_to(ClientState.WAITING_ACK)
             
-        if isinstance(event, h2.events.SettingsAcknowledged):
+        elif isinstance(event, h2.events.SettingsAcknowledged):
             if self.state == ClientState.WAITING_ACK:
                 self._transition_to(ClientState.SENDING_FRAMES)
         

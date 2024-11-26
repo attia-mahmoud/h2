@@ -2,8 +2,8 @@ from enum import Enum, auto
 
 class ClientState(Enum):
     IDLE = auto()
-    PREFACE_SENT = auto()
-    SETTINGS_ACKED = auto()
+    WAITING_PREFACE = auto()
+    WAITING_ACK = auto()
     SENDING_FRAMES = auto()
     RECEIVING_FRAMES = auto()
     CLOSING = auto()

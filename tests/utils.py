@@ -72,8 +72,32 @@ class SSL_CONFIG:
     ALPN_PROTOCOLS = ['h2c']
     MAX_BUFFER_SIZE = 65535
 
-def create_ssl_context(test_case: Dict, is_client: bool = True):
-    """Create SSL context for client or server"""
+def create_ssl_context(inputs: List, outputs: List) -> None:
+    """
+    Create SSL context for client or server
+
+    Number of input arguments: 2
+
+    Number of output arguments: 0
+
+    Optional input arguments: No
+
+    Optional output arguments: No
+    
+    Args:
+        inputs (List[str]): The list of input variable names. 
+        It contains two mandatory input arguments, which are the name of the variable containing the test case dict
+        and the name of the variable containing the is_client boolean flag
+        
+        outputs (List[str]): The list of output variable names. 
+        It contains one mandatory output argument, which is the name of the variable to store the created SSL context.
+
+        state_machine: The state machine object.
+    """
+    # replaced by "test_case = state_machine.get_variable_value(inputs[0])" in production
+    test_case = inputs[0]
+    is_client = inputs[1]
+    
     if is_client:
         context = ssl.create_default_context()
         context.check_hostname = False
@@ -86,9 +110,11 @@ def create_ssl_context(test_case: Dict, is_client: bool = True):
         )
         
     protocol = test_case.get('tls_protocol', 'h2')
-    
     context.set_alpn_protocols([protocol])
-    return context
+    
+    # Store result in output variable
+    # replaced with "state_machine.set_variable_value(outputs[0], context)" in production
+    outputs[0] = context
 
 def create_socket(host: str, port: int, is_server: bool = False):
     """Create and configure a socket"""

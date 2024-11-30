@@ -2,6 +2,7 @@ import overload
 import h2.connection
 import h2.config
 import h2.events
+import ssl
 from utils import (
     setup_logging,
     create_ssl_context,
@@ -47,7 +48,7 @@ class HTTP2Client:
         logger.debug(f"State transition: {self.state} -> {new_state}")
         self.state = new_state
 
-    def _handle_frame(self, event: h2.events.Event) -> None:
+    def _handle_frame(self, event: h2.events.Event, client_socket: ssl.SSLSocket = None) -> None:
         """Central event handler that updates state based on received events"""
         if isinstance(event, h2.events.RemoteSettingsChanged):
             if self.state == ClientState.WAITING_PREFACE:
@@ -69,7 +70,16 @@ class HTTP2Client:
         self.sock = create_socket(self.host, self.port)
         
         if self.test_case.get('tls_enabled', False):
-            self.sock = create_ssl_context(self.test_case, is_client=True).wrap_socket(
+            # Create variables for inputs
+            ssl_context = [None]
+            
+            # Call with variable names
+            create_ssl_context(
+                inputs=[self.test_case, True],
+                outputs=ssl_context
+            )
+            
+            self.sock = ssl_context[0].wrap_socket(
                 self.sock,
                 server_hostname=self.host
             )

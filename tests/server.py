@@ -4,6 +4,7 @@ import h2.config
 import h2.connection
 import h2.events
 import ssl
+from checks import function_map
 from utils import (
     setup_logging,
     create_ssl_context,
@@ -36,7 +37,8 @@ class HTTP2Server:
             ServerState.IDLE: self._handle_idle,
             ServerState.WAITING_PREFACE: self._handle_waiting_preface,
             ServerState.WAITING_ACK: self._handle_waiting_ack,
-            ServerState.RECEIVING_FRAMES: self._handle_receiving_frames,
+            ServerState.RECEIVING_TEST_FRAMES: self._handle_receiving_test_frames,
+            ServerState.RECEIVING_CLOSING_FRAMES: self._handle_receiving_closing_frames,
             ServerState.SENDING_FRAMES: self._handle_sending_frames,
             ServerState.CLOSING: self._handle_closing
         }
@@ -47,9 +49,9 @@ class HTTP2Server:
         self.state = new_state
 
     def _handle_frame(self, event: h2.events.Event) -> None:
-        log_h2_frame(logger, "RECEIVED", event)
         """Central event handler that updates state based on received events"""
         if isinstance(event, h2.events.RemoteSettingsChanged):
+            log_h2_frame(logger, "RECEIVED", event)
             if self.state == ServerState.WAITING_PREFACE:
                 outbound_data = self.conn.data_to_send()  # This will generate SETTINGS ACK
                 if outbound_data:
@@ -57,12 +59,28 @@ class HTTP2Server:
                 self._transition_to(ServerState.WAITING_ACK)
         
         elif isinstance(event, h2.events.SettingsAcknowledged):
+            log_h2_frame(logger, "RECEIVED", event)
             if self.state == ServerState.WAITING_ACK:
-                self._transition_to(ServerState.RECEIVING_FRAMES)
+                self._transition_to(ServerState.RECEIVING_TEST_FRAMES)
         
         elif isinstance(event, h2.events.ConnectionTerminated):
+            log_h2_frame(logger, "RECEIVED", event)
             logger.info(f"Received GOAWAY frame. Error code: {event.error_code}")
             self._transition_to(ServerState.CLOSING)
+    
+    def _handle_test(self, event, frame):
+        for test in frame.get('tests', []):
+            for check in test:
+                function_name = check['function']
+                params = check['params']
+                
+                function = function_map.get(function_name)
+                
+                if function:
+                    result = function(event, *params)
+                    logger.info(result)
+                else:
+                    logger.warning(f"Function {function_name} not found")
 
     def _handle_idle(self):
         """Initialize connection settings"""
@@ -107,9 +125,10 @@ class HTTP2Server:
             for event in events:
                 self._handle_frame(event)
 
-    def _handle_receiving_frames(self):
+    def _handle_receiving_test_frames(self):
         """Handle response waiting state."""
         expected_client_frames = len(self.test_case.get('client_frames', []))
+        expected_server_frames = len(self.test_case.get('server_frames', []))
         
         # If we don't expect any frames from client, skip waiting
         if expected_client_frames == 0:
@@ -117,11 +136,40 @@ class HTTP2Server:
             self._transition_to(ServerState.SENDING_FRAMES)
             return
         
+        logger.info(f"Expected {expected_client_frames} frames from client")
+        count = 0
+        
         for i in range(expected_client_frames):
             data = self._receive_frame()
             if data is None:  # Timeout occurred
-                logger.info("Timeout waiting for client frames, sending frames")
+                logger.info("Timeout waiting for client frames")
                 self._transition_to(ServerState.SENDING_FRAMES)
+                return
+            
+            else:
+                logger.info(f"Received frame {i+1}/{expected_client_frames}")
+                events = self.conn.receive_data(data)
+                logger.info(f"Received events: {events}")
+                for event in events:
+                    log_h2_frame(logger, "RECEIVED", event)
+                    if count < len(self.test_case['client_frames']):
+                        self._handle_test(event, self.test_case['client_frames'][count])
+                    self._handle_frame(event)
+                    count += 1
+
+                outbound_data = self.conn.data_to_send()
+                if outbound_data:
+                    self.client_socket.sendall(outbound_data)
+
+        self._transition_to(ServerState.SENDING_FRAMES)
+
+    def _handle_receiving_closing_frames(self):
+        """Handle response waiting state."""        
+        for i in range(1):
+            data = self._receive_frame()
+            if data is None:  # Timeout occurred
+                logger.info("Timeout waiting for closing client frames")
+                self._transition_to(ServerState.CLOSING)
                 return
             
             else:
@@ -149,7 +197,7 @@ class HTTP2Server:
             time.sleep(0.1)
             
             # Wait for any client frames
-            self._transition_to(ServerState.RECEIVING_FRAMES)
+            self._transition_to(ServerState.RECEIVING_CLOSING_FRAMES)
 
         except Exception as e:
             logger.error(f"Error sending frames: {e}")

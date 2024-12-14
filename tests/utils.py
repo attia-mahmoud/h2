@@ -72,7 +72,7 @@ class SSL_CONFIG:
     ALPN_PROTOCOLS = ['h2c']
     MAX_BUFFER_SIZE = 65535
 
-def create_ssl_context(inputs: List, outputs: List) -> None:
+def create_ssl_context(inputs: List, outputs: List, statemachine) -> None:
     """
     Create SSL context for client or server
 
@@ -486,7 +486,7 @@ def send_settings_frame(conn: h2.connection.H2Connection, sock: socket.socket, f
     
     # If we want to bypass h2 validation and send raw frame
     if (stream_id != 0 or 
-        'payload_length' in frame_data or 
+        'extra_bytes' in frame_data or 
         'raw_payload' in frame_data or 
         any(isinstance(k, int) and k not in h2.settings.SettingCodes for k in processed_settings)):
         
@@ -496,7 +496,7 @@ def send_settings_frame(conn: h2.connection.H2Connection, sock: socket.socket, f
             settings_payload += setting_id.to_bytes(2, byteorder='big')
             settings_payload += value.to_bytes(4, byteorder='big')
         
-        extra_payload = b'\x00' * frame_data.get('payload_length', 0)
+        extra_payload = b'\x00' * frame_data.get('extra_bytes', 0)
         settings_payload += extra_payload
         length = len(settings_payload)
         

@@ -238,17 +238,14 @@
     "client_frames": [
       {
         "type": "PRIORITY",
-        "stream_id": 0
-      }
-    ],
-    "server_test": [
-      {
-        "type": "PRIORITY",
-        "checks": [
+        "stream_id": 0,
+        "tests": [
           [
             {
-              "attribute": "stream_id",
-              "regex": "^0$"
+              "function": "verifystreamid",
+              "params": [
+                "0"
+              ]
             }
           ]
         ]
@@ -295,17 +292,14 @@
       },
       {
         "type": "RST_STREAM",
-        "stream_id": 0
-      }
-    ],
-    "server_test": [
-      {
-        "type": "RST_STREAM",
-        "checks": [
+        "stream_id": 0,
+        "tests": [
           [
             {
-              "attribute": "stream_id",
-              "regex": "^0$"
+              "function": "verifystreamid",
+              "params": [
+                "0"
+              ]
             }
           ]
         ]
@@ -323,20 +317,22 @@
         },
         "settings": {
           "MAX_CONCURRENT_STREAMS": 100
-        }
-      }
-    ],
-    "server_test": [
-      {
-        "type": "SETTINGS",
-        "checks": [
+        },
+        "tests": [
           [
             {
-              "function": "verifyregex",
+              "function": "verifytype",
               "params": [
-                "settings",
-                "data",
-                "^\\{.*\\}$"
+                "SettingsAcknowledged"
+              ]
+            }
+          ],
+          [
+            {
+              "function": "verifysettings",
+              "params": [
+                "MAX_CONCURRENT_STREAMS",
+                "100"
               ]
             }
           ]
@@ -358,7 +354,17 @@
       {
         "type": "RST_STREAM",
         "stream_id": 1,
-        "payload_length": 5
+        "payload_length": 5,
+        "tests": [
+          [
+            {
+              "function": "verifylength",
+              "params": [
+                5
+              ]
+            }
+          ]
+        ]
       }
     ]
   },
@@ -371,7 +377,17 @@
         "stream_id": 1,
         "settings": {
           "MAX_CONCURRENT_STREAMS": 100
-        }
+        },
+        "tests": [
+          [
+            {
+              "function": "verifystreamid",
+              "params": [
+                "1"
+              ]
+            }
+          ]
+        ]
       }
     ]
   },
@@ -384,7 +400,17 @@
         "extra_bytes": 5,
         "settings": {
           "MAX_CONCURRENT_STREAMS": 100
-        }
+        },
+        "tests": [
+          [
+            {
+              "function": "verifylength",
+              "params": [
+                11
+              ]
+            }
+          ]
+        ]
       }
     ]
   },

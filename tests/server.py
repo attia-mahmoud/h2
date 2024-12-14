@@ -67,20 +67,47 @@ class HTTP2Server:
             log_h2_frame(logger, "RECEIVED", event)
             logger.info(f"Received GOAWAY frame. Error code: {event.error_code}")
             self._transition_to(ServerState.CLOSING)
-    
+
     def _handle_test(self, event, frame):
-        for test in frame.get('tests', []):
+        """
+        Handle test cases for received frames.
+        Each frame can have multiple tests, where each test contains multiple checks.
+        A test passes if all its checks pass.
+        We try each test until one passes completely, or all tests fail.
+        """
+        tests = frame.get('tests', [])
+
+        if not tests:
+            logger.warning("No tests found for this frame")
+            return
+        
+        for test_index, test in enumerate(tests, 1):
+            logger.info(f"Trying test {test_index}/{len(tests)}")
+            all_checks_passed = True
+            
+            # Try all checks in this test
             for check in test:
                 function_name = check['function']
                 params = check['params']
                 
                 function = function_map.get(function_name)
-                
-                if function:
-                    result = function(event, *params)
-                    logger.info(result)
-                else:
+                if not function:
                     logger.warning(f"Function {function_name} not found")
+                    all_checks_passed = False
+                    break
+                
+                if not function(event, *params):
+                    all_checks_passed = False
+                    break
+            
+            if all_checks_passed:
+                logger.info(f"Test {test_index} passed")
+                return  # Exit after first successful test
+            else:
+                logger.info(f"Test {test_index} failed")
+        
+        # If we get here, all tests failed
+        logger.warning("All tests failed for this frame")
 
     def _handle_idle(self):
         """Initialize connection settings"""

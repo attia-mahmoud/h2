@@ -18,6 +18,7 @@ import argparse
 import socket
 import time
 from states import ClientState
+from checks import function_map
 
 logger = setup_logging('client')
 
@@ -50,6 +51,11 @@ class HTTP2Client:
 
     def _handle_frame(self, event: h2.events.Event, client_socket: ssl.SSLSocket = None) -> None:
         """Central event handler that updates state based on received events"""
+        if self.state == ClientState.RECEIVING_FRAMES:
+            frame_index = getattr(self, '_received_frame_count', 0)
+            if frame_index < len(self.test_case.get('server_frames', [])):
+                self._handle_test(event, self.test_case['server_frames'][frame_index])
+        
         if isinstance(event, h2.events.RemoteSettingsChanged):
             if self.state == ClientState.WAITING_PREFACE:
                 outbound_data = self.conn.data_to_send()  # This will generate SETTINGS ACK
@@ -64,6 +70,47 @@ class HTTP2Client:
         elif isinstance(event, h2.events.ConnectionTerminated):
             logger.info(f"Received GOAWAY frame. Error code: {event.error_code}")
             self._transition_to(ClientState.CLOSING)
+
+    def _handle_test(self, event, frame):
+        """
+        Handle test cases for received frames.
+        Each frame can have multiple tests, where each test contains multiple checks.
+        A test passes if all its checks pass.
+        We try each test until one passes completely, or all tests fail.
+        """
+        tests = frame.get('tests', [])
+
+        if not tests:
+            logger.warning("No tests found for this frame")
+            return
+        
+        for test_index, test in enumerate(tests, 1):
+            logger.info(f"Trying test {test_index}/{len(tests)}")
+            all_checks_passed = True
+            
+            # Try all checks in this test
+            for check in test:
+                function_name = check['function']
+                params = check['params']
+                
+                function = function_map.get(function_name)
+                if not function:
+                    logger.warning(f"Function {function_name} not found")
+                    all_checks_passed = False
+                    break
+                
+                if not function(event, *params):
+                    all_checks_passed = False
+                    break
+            
+            if all_checks_passed:
+                logger.info(f"Test {test_index} passed")
+                return  # Exit after first successful test
+            else:
+                logger.info(f"Test {test_index} failed")
+        
+        # If we get here, all tests failed
+        logger.warning("All tests failed for this frame")
 
     def _handle_idle(self):
         """Handle IDLE state: Create connection and move to WAITING_PREFACE"""
@@ -127,7 +174,7 @@ class HTTP2Client:
     def _handle_receiving_frames(self):
         """Handle response waiting state. Returns number of frames received."""
         expected_server_frames = len(self.test_case.get('server_frames', []))
-        received_server_frames = 0
+        self._received_frame_count = 0  # Initialize frame counter
         retry_count = 0
         logger.info(f"expected_server_frames: {expected_server_frames}")
         
@@ -137,20 +184,20 @@ class HTTP2Client:
             self._transition_to(ClientState.CLOSING)
             return 0
         
-        while received_server_frames < expected_server_frames:
+        while self._received_frame_count < expected_server_frames:
             data = self._receive_frame()
             if data is None:  # Timeout occurred
                 retry_count += 1
                 if retry_count >= MAX_RETRY_ATTEMPTS:
                     logger.info(f"Max retries ({MAX_RETRY_ATTEMPTS}) reached waiting for server frames, closing connection")
                     self._transition_to(ClientState.CLOSING)
-                    return received_server_frames
+                    return self._received_frame_count
                 logger.info(f"Retry {retry_count}/{MAX_RETRY_ATTEMPTS} waiting for server frames")
                 continue
             
             else:
                 retry_count = 0  # Reset retry counter on successful receive
-                logger.info(f"received_server_frames: {received_server_frames + 1}")
+                logger.info(f"received_server_frames: {self._received_frame_count + 1}")
                 events = self.conn.receive_data(data)
                 for event in events:
                     log_h2_frame(logger, "RECEIVED", event)
@@ -160,7 +207,7 @@ class HTTP2Client:
                 if outbound_data:
                     self.sock.sendall(outbound_data)
                     
-                received_server_frames += 1
+                self._received_frame_count += 1
         
         # Only transition to CLOSING after receiving all expected frames
         logger.info("All expected frames received, closing connection")

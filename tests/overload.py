@@ -413,15 +413,15 @@ def new_rststream_parse_body(self, data: memoryview):
     self.body_len = 4
 
 def new_settings_parse_body(self, data: memoryview):
-    body_len = 0
-    for i in range(0, len(data), 6):
+    body_len = len(data)
+    for i in range(0, (len(data) // 6) * 6, 6):
         try:
             name, value = _STRUCT_HL.unpack(data[i:i+6])
         except struct.error:
             raise InvalidFrameError("Invalid SETTINGS body")
 
         self.settings[name] = value
-        body_len += 6
+        # body_len += 6
 
     self.body_len = body_len
 
